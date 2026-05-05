@@ -33,8 +33,8 @@ After launch, Swagger UI is available at: [http://localhost:5000/swagger](http:/
 | id          | Guid       | Yes      | Auto-generated identifier  |
 | title       | string     | Yes      | Event title  |
 | description | string     | No       | Event description |
-| startAt     | DateTime   | Yes      | Event start time           |
-| endAt       | DateTime   | Yes      | Event end time (must be after startAt) |
+| startAt     | DateTimeOffset | Yes      | Event start time |
+| endAt       | DateTimeOffset | Yes      | Event end time (must be after startAt) |
 
 ## Validation Rules
 

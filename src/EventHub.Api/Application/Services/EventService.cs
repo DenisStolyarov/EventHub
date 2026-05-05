@@ -30,8 +30,8 @@ public class EventService(IEventRepository repository) : IEventService
             Id = Guid.NewGuid(),
             Title = dto.Title,
             Description = dto.Description,
-            StartAt = dto.StartAt,
-            EndAt = dto.EndAt
+            StartAt = dto.StartAt.UtcDateTime,
+            EndAt = dto.EndAt.UtcDateTime
         };
 
         repository.Add(@event);
@@ -53,8 +53,8 @@ public class EventService(IEventRepository repository) : IEventService
             Id = existing.Id,
             Title = dto.Title,
             Description = dto.Description,
-            StartAt = dto.StartAt,
-            EndAt = dto.EndAt
+            StartAt = dto.StartAt.UtcDateTime,
+            EndAt = dto.EndAt.UtcDateTime
         };
 
         repository.Update(updated);
@@ -81,7 +81,7 @@ public class EventService(IEventRepository repository) : IEventService
         Id = @event.Id,
         Title = @event.Title,
         Description = @event.Description,
-        StartAt = @event.StartAt,
-        EndAt = @event.EndAt
+        StartAt = new(@event.StartAt, TimeSpan.Zero),
+        EndAt = new(@event.EndAt, TimeSpan.Zero)
     };
 }

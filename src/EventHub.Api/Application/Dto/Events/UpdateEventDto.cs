@@ -6,7 +6,7 @@ public sealed record UpdateEventDto
 
     public string? Description { get; init; }
 
-    public required DateTime StartAt { get; init; }
+    public required DateTimeOffset StartAt { get; init; }
 
-    public required DateTime EndAt { get; init; }
+    public required DateTimeOffset EndAt { get; init; }
 }

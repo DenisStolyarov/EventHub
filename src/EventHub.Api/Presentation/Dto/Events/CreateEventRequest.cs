@@ -10,8 +10,8 @@ public sealed record CreateEventRequest
     public string? Description { get; init; }
 
     [Required]
-    public required DateTime StartAt { get; init; }
+    public required DateTimeOffset StartAt { get; init; }
 
     [Required]
-    public required DateTime EndAt { get; init; }
+    public required DateTimeOffset EndAt { get; init; }
 }
