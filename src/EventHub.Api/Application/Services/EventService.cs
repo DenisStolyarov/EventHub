@@ -11,16 +11,14 @@ public class EventService(IEventRepository repository) : IEventService
     {
         IEnumerable<Event> events = repository.GetAll();
 
-        return events.Select(MapToDto);
+        return events.ToDto();
     }
 
     public EventDto? GetById(Guid id)
     {
         Event? @event = repository.GetById(id);
 
-        return @event is null
-            ? null
-            : MapToDto(@event);
+        return @event?.ToDto();
     }
 
     public EventDto Create(CreateEventDto dto)
@@ -36,7 +34,7 @@ public class EventService(IEventRepository repository) : IEventService
 
         repository.Add(@event);
 
-        return MapToDto(@event);
+        return @event.ToDto();
     }
 
     public EventDto? Update(Guid id, UpdateEventDto dto)
@@ -59,7 +57,7 @@ public class EventService(IEventRepository repository) : IEventService
 
         repository.Update(updated);
 
-        return MapToDto(updated);
+        return updated.ToDto();
     }
 
     public bool Delete(Guid id)
@@ -75,13 +73,4 @@ public class EventService(IEventRepository repository) : IEventService
 
         return true;
     }
-
-    private static EventDto MapToDto(Event @event) => new()
-    {
-        Id = @event.Id,
-        Title = @event.Title,
-        Description = @event.Description,
-        StartAt = new(@event.StartAt, TimeSpan.Zero),
-        EndAt = new(@event.EndAt, TimeSpan.Zero)
-    };
 }

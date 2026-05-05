@@ -17,9 +17,8 @@ public class EventsController(IEventService eventService) : ControllerBase
     public ActionResult<IEnumerable<EventResponse>> GetAll()
     {
         IEnumerable<EventDto> events = eventService.GetAll();
-        IEnumerable<EventResponse> response = events.Select(MapToResponse);
 
-        return Ok(response);
+        return Ok(events.ToResponse());
     }
 
     [HttpGet("{id:guid}")]
@@ -29,14 +28,9 @@ public class EventsController(IEventService eventService) : ControllerBase
     {
         EventDto? @event = eventService.GetById(id);
 
-        if (@event is null)
-        {
-            return NotFound();
-        }
-
-        EventResponse response = MapToResponse(@event);
-
-        return Ok(response);
+        return @event is null
+            ? NotFound()
+            : Ok(@event.ToResponse());
     }
 
     [HttpPost]
@@ -60,9 +54,8 @@ public class EventsController(IEventService eventService) : ControllerBase
         };
 
         EventDto created = eventService.Create(dto);
-        EventResponse response = MapToResponse(created);
 
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, response);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created.ToResponse());
     }
 
     [HttpPut("{id:guid}")]
@@ -88,14 +81,9 @@ public class EventsController(IEventService eventService) : ControllerBase
 
         EventDto? updated = eventService.Update(id, dto);
 
-        if (updated is null)
-        {
-            return NotFound();
-        }
-
-        EventResponse response = MapToResponse(updated);
-
-        return Ok(response);
+        return updated is null
+            ? NotFound()
+            : Ok(updated.ToResponse());
     }
 
     [HttpDelete("{id:guid}")]
@@ -105,17 +93,6 @@ public class EventsController(IEventService eventService) : ControllerBase
     {
         bool deleted = eventService.Delete(id);
 
-        return deleted
-            ? NoContent()
-            : NotFound();
+        return deleted ? NoContent() : NotFound();
     }
-
-    private static EventResponse MapToResponse(EventDto dto) => new()
-    {
-        Id = dto.Id,
-        Title = dto.Title,
-        Description = dto.Description,
-        StartAt = dto.StartAt,
-        EndAt = dto.EndAt
-    };
 }
