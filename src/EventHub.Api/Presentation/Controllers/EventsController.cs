@@ -9,7 +9,7 @@ namespace EventHub.Api.Presentation.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Produces("application/json")]
-[Route("api/v{version:apiVersion}/events")]
+[Route("events")]
 public class EventsController(IEventService eventService) : ControllerBase
 {
     [HttpGet]
@@ -62,7 +62,7 @@ public class EventsController(IEventService eventService) : ControllerBase
         EventDto created = eventService.Create(dto);
         EventResponse response = MapToResponse(created);
 
-        return CreatedAtAction(nameof(GetById), new { id = created.Id, version = "1.0" }, response);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, response);
     }
 
     [HttpPut("{id:guid}")]
