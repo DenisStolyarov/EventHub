@@ -13,30 +13,30 @@ namespace EventHub.Api.Presentation.Controllers;
 public class EventsController(IEventService eventService) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<EventResponse>), StatusCodes.Status200OK)]
-    public ActionResult<IEnumerable<EventResponse>> GetAll()
+    [ProducesResponseType(typeof(IEnumerable<EventDto>), StatusCodes.Status200OK)]
+    public ActionResult<IEnumerable<EventDto>> GetAll()
     {
         IEnumerable<EventDto> events = eventService.GetAll();
 
-        return Ok(events.ToResponse());
+        return Ok(events);
     }
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(EventResponse), StatusCodes.Status200OK)]
-    public ActionResult<EventResponse> GetById(Guid id)
+    [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
+    public ActionResult<EventDto> GetById(Guid id)
     {
         EventDto? @event = eventService.GetById(id);
 
         return @event is null
             ? NotFound()
-            : Ok(@event.ToResponse());
+            : Ok(@event);
     }
 
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(EventResponse), StatusCodes.Status201Created)]
-    public ActionResult<EventResponse> Create(CreateEventRequest request)
+    [ProducesResponseType(typeof(EventDto), StatusCodes.Status201Created)]
+    public ActionResult<EventDto> Create(CreateEventRequest request)
     {
         CreateEventDto dto = new()
         {
@@ -50,7 +50,7 @@ public class EventsController(IEventService eventService) : ControllerBase
         {
             EventDto created = eventService.Create(dto);
 
-            return CreatedAtAction(nameof(GetById), new { id = created.Id, version = "1.0" }, created.ToResponse());
+            return CreatedAtAction(nameof(GetById), new { id = created.Id, version = "1.0" }, created);
         }
         catch (ArgumentException ex)
         {
@@ -63,8 +63,8 @@ public class EventsController(IEventService eventService) : ControllerBase
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(EventResponse), StatusCodes.Status200OK)]
-    public ActionResult<EventResponse> Update(Guid id, UpdateEventRequest request)
+    [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
+    public ActionResult<EventDto> Update(Guid id, UpdateEventRequest request)
     {
         UpdateEventDto dto = new()
         {
@@ -80,7 +80,7 @@ public class EventsController(IEventService eventService) : ControllerBase
 
             return updated is null
                 ? NotFound()
-                : Ok(updated.ToResponse());
+                : Ok(updated);
         }
         catch (ArgumentException ex)
         {
