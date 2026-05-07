@@ -18,13 +18,33 @@ After launch, Swagger UI is available at: [http://localhost:5000/swagger](http:/
 
 ## API Endpoints
 
-| Method   | Endpoint         | Description              | Success Status | Error Status |
-|----------|------------------|--------------------------|----------------|--------------|
-| GET      | /events          | Get all events           | 200 OK         | -            |
-| GET      | /events/{id}     | Get event by id          | 200 OK         | 404 Not Found|
-| POST     | /events          | Create a new event       | 201 Created    | 400 Bad Request |
-| PUT      | /events/{id}     | Update an event          | 200 OK         | 404 Not Found / 400 Bad Request |
-| DELETE   | /events/{id}     | Delete an event          | 204 No Content | 404 Not Found|
+API versioning is supported via URL segment, `X-Api-Version` header, or `api-version` query string parameter. The default version is 1.0.
+
+| Method   | Endpoint              | Description              | Success Status | Error Status |
+|----------|-----------------------|--------------------------|----------------|--------------|
+| GET      | /api/v1/events        | Get all events           | 200 OK         | -            |
+| GET      | /api/v1/events/{id}   | Get event by id          | 200 OK         | 404 Not Found|
+| POST     | /api/v1/events        | Create a new event       | 201 Created    | 400 Bad Request |
+| PUT      | /api/v1/events/{id}   | Update an event          | 200 OK         | 404 Not Found / 400 Bad Request |
+| DELETE   | /api/v1/events/{id}   | Delete an event          | 204 No Content | 404 Not Found|
+
+### Versioning Examples
+
+**URL segment:**
+```
+GET /api/v1/events
+```
+
+**Header:**
+```
+GET /api/v1/events
+X-Api-Version: 1.0
+```
+
+**Query string:**
+```
+GET /api/v1/events?api-version=1.0
+```
 
 ## Event Model
 
