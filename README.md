@@ -48,13 +48,23 @@ GET /api/v1/events?api-version=1.0
 
 ## Event Model
 
-| Field        | Type       | Required | Description                |
-|-------------|------------|----------|----------------------------|
-| id          | Guid       | Yes      | Auto-generated identifier  |
-| title       | string     | Yes      | Event title  |
-| description | string     | No       | Event description |
-| startAt     | DateTimeOffset | Yes      | Event start time |
-| endAt       | DateTimeOffset | Yes      | Event end time (must be after startAt) |
+| Field        | Type           | Required | Description                |
+|-------------|----------------|----------|----------------------------|
+| id          | Guid           | Yes      | Auto-generated identifier  |
+| title       | string         | Yes      | Event title (non-empty, trimmed) |
+| description | string         | No       | Event description |
+| startAt     | DateTimeOffset | Yes      | Event start time (UTC, ISO 8601 with Z suffix) |
+| endAt       | DateTimeOffset | Yes      | Event end time (UTC, ISO 8601 with Z suffix, must be after startAt) |
+
+### Date/Time Format
+
+All date/time values must be provided in **UTC** using ISO 8601 format with the `Z` suffix:
+
+```json
+"startAt": "2026-01-15T10:00:00Z"
+```
+
+Using the `Z` suffix ensures that both the client and server interpret the timestamp as UTC, avoiding timezone ambiguity.
 
 ## Validation Rules
 
