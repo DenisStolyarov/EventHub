@@ -38,13 +38,6 @@ public class EventsController(IEventService eventService) : ControllerBase
     [ProducesResponseType(typeof(EventResponse), StatusCodes.Status201Created)]
     public ActionResult<EventResponse> Create(CreateEventRequest request)
     {
-        if (request.EndAt <= request.StartAt)
-        {
-            ModelState.AddModelError(nameof(request.EndAt), "EndAt must be later than StartAt.");
-
-            return ValidationProblem(ModelState);
-        }
-
         CreateEventDto dto = new()
         {
             Title = request.Title,
@@ -53,9 +46,18 @@ public class EventsController(IEventService eventService) : ControllerBase
             EndAt = request.EndAt
         };
 
-        EventDto created = eventService.Create(dto);
+        try
+        {
+            EventDto created = eventService.Create(dto);
 
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created.ToResponse());
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created.ToResponse());
+        }
+        catch (ArgumentException ex)
+        {
+            ModelState.AddModelError(ex.ParamName ?? string.Empty, ex.Message);
+
+            return ValidationProblem(ModelState);
+        }        
     }
 
     [HttpPut("{id:guid}")]
@@ -64,13 +66,6 @@ public class EventsController(IEventService eventService) : ControllerBase
     [ProducesResponseType(typeof(EventResponse), StatusCodes.Status200OK)]
     public ActionResult<EventResponse> Update(Guid id, UpdateEventRequest request)
     {
-        if (request.EndAt <= request.StartAt)
-        {
-            ModelState.AddModelError(nameof(request.EndAt), "EndAt must be later than StartAt.");
-
-            return ValidationProblem(ModelState);
-        }
-
         UpdateEventDto dto = new()
         {
             Title = request.Title,
@@ -78,12 +73,21 @@ public class EventsController(IEventService eventService) : ControllerBase
             StartAt = request.StartAt,
             EndAt = request.EndAt
         };
+        
+        try
+        {
+            EventDto? updated = eventService.Update(id, dto);
 
-        EventDto? updated = eventService.Update(id, dto);
+            return updated is null
+                ? NotFound()
+                : Ok(updated.ToResponse());
+        }
+        catch (ArgumentException ex)
+        {
+            ModelState.AddModelError(ex.ParamName ?? string.Empty, ex.Message);
 
-        return updated is null
-            ? NotFound()
-            : Ok(updated.ToResponse());
+            return ValidationProblem(ModelState);
+        }
     }
 
     [HttpDelete("{id:guid}")]

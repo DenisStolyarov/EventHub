@@ -2,6 +2,7 @@ using EventHub.Api.Application.Dto.Events;
 using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Domain.Entities;
 using EventHub.Api.Domain.Interfaces;
+using EventHub.Api.Domain.ValueObjects;
 
 namespace EventHub.Api.Application.Services;
 
@@ -23,14 +24,8 @@ public class EventService(IEventRepository repository) : IEventService
 
     public EventDto Create(CreateEventDto dto)
     {
-        Event @event = new()
-        {
-            Id = Guid.NewGuid(),
-            Title = dto.Title,
-            Description = dto.Description,
-            StartAt = dto.StartAt.UtcDateTime,
-            EndAt = dto.EndAt.UtcDateTime
-        };
+        Period period = new(dto.StartAt.UtcDateTime, dto.EndAt.UtcDateTime);
+        Event @event = new(Guid.CreateVersion7(), dto.Title, dto.Description, period);
 
         repository.Add(@event);
 
@@ -46,14 +41,8 @@ public class EventService(IEventRepository repository) : IEventService
             return null;
         }
 
-        Event updated = new()
-        {
-            Id = existing.Id,
-            Title = dto.Title,
-            Description = dto.Description,
-            StartAt = dto.StartAt.UtcDateTime,
-            EndAt = dto.EndAt.UtcDateTime
-        };
+        Period period = new(dto.StartAt.UtcDateTime, dto.EndAt.UtcDateTime);
+        Event updated = new(existing.Id, dto.Title, dto.Description, period);
 
         repository.Update(updated);
 
