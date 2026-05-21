@@ -6,11 +6,11 @@ public interface IEventService
 {
     IEnumerable<EventDto> GetAll();
 
-    EventDto? GetById(Guid id);
+    EventDto GetById(Guid id);
 
     EventDto Create(CreateEventDto dto);
 
-    EventDto? Update(Guid id, UpdateEventDto dto);
+    EventDto Update(Guid id, UpdateEventDto dto);
 
-    bool Delete(Guid id);
+    void Delete(Guid id);
 }

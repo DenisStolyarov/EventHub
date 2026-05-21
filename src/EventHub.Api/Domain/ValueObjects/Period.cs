@@ -1,3 +1,5 @@
+using EventHub.Api.Domain.Exceptions;
+
 namespace EventHub.Api.Domain.ValueObjects;
 
 public readonly record struct Period
@@ -10,7 +12,7 @@ public readonly record struct Period
     {
         if (endAt <= startAt)
         {
-            throw new ArgumentException("EndAt must be later than StartAt.", nameof(EndAt));
+            throw new DomainException(nameof(EndAt), "EndAt must be later than StartAt.");
         }
 
         StartAt = startAt;

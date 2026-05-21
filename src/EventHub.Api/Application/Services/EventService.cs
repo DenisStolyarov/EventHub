@@ -1,4 +1,5 @@
 using EventHub.Api.Application.Dto.Events;
+using EventHub.Api.Application.Exceptions;
 using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Domain.Entities;
 using EventHub.Api.Domain.Interfaces;
@@ -15,11 +16,12 @@ public class EventService(IEventRepository repository) : IEventService
         return events.ToDto();
     }
 
-    public EventDto? GetById(Guid id)
+    public EventDto GetById(Guid id)
     {
-        Event? @event = repository.GetById(id);
+        Event? @event = repository.GetById(id)
+            ?? throw new NotFoundException(nameof(Event), id);
 
-        return @event?.ToDto();
+        return @event.ToDto();
     }
 
     public EventDto Create(CreateEventDto dto)
@@ -32,14 +34,10 @@ public class EventService(IEventRepository repository) : IEventService
         return @event.ToDto();
     }
 
-    public EventDto? Update(Guid id, UpdateEventDto dto)
+    public EventDto Update(Guid id, UpdateEventDto dto)
     {
-        Event? existing = repository.GetById(id);
-
-        if (existing is null)
-        {
-            return null;
-        }
+        Event? existing = repository.GetById(id)
+            ?? throw new NotFoundException(nameof(Event), id);
 
         Period period = new(dto.StartAt.UtcDateTime, dto.EndAt.UtcDateTime);
         Event updated = new(existing.Id, dto.Title, dto.Description, period);
@@ -49,17 +47,11 @@ public class EventService(IEventRepository repository) : IEventService
         return updated.ToDto();
     }
 
-    public bool Delete(Guid id)
+    public void Delete(Guid id)
     {
-        Event? existing = repository.GetById(id);
-
-        if (existing is null)
-        {
-            return false;
-        }
+        Event? existing = repository.GetById(id)
+            ?? throw new NotFoundException(nameof(Event), id);
 
         repository.Delete(id);
-
-        return true;
     }
 }

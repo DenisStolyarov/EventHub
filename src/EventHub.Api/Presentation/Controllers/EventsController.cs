@@ -22,20 +22,19 @@ public class EventsController(IEventService eventService) : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<EventDto> GetById(Guid id)
     {
-        EventDto? @event = eventService.GetById(id);
+        EventDto @event = eventService.GetById(id);
 
-        return @event is null
-            ? NotFound()
-            : Ok(@event);
+        return Ok(@event);
     }
 
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(EventDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public ActionResult<EventDto> Create(CreateEventRequest request)
     {
         CreateEventDto dto = new()
@@ -46,24 +45,16 @@ public class EventsController(IEventService eventService) : ControllerBase
             EndAt = request.EndAt
         };
 
-        try
-        {
-            EventDto created = eventService.Create(dto);
+        EventDto created = eventService.Create(dto);
 
-            return CreatedAtAction(nameof(GetById), new { id = created.Id, version = "1.0" }, created);
-        }
-        catch (ArgumentException ex)
-        {
-            ModelState.AddModelError(ex.ParamName ?? string.Empty, ex.Message);
-
-            return ValidationProblem(ModelState);
-        }        
+        return CreatedAtAction(nameof(GetById), new { id = created.Id, version = "1.0" }, created);
     }
 
     [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public ActionResult<EventDto> Update(Guid id, UpdateEventRequest request)
     {
         UpdateEventDto dto = new()
@@ -73,21 +64,10 @@ public class EventsController(IEventService eventService) : ControllerBase
             StartAt = request.StartAt,
             EndAt = request.EndAt
         };
-        
-        try
-        {
-            EventDto? updated = eventService.Update(id, dto);
 
-            return updated is null
-                ? NotFound()
-                : Ok(updated);
-        }
-        catch (ArgumentException ex)
-        {
-            ModelState.AddModelError(ex.ParamName ?? string.Empty, ex.Message);
+        EventDto updated = eventService.Update(id, dto);
 
-            return ValidationProblem(ModelState);
-        }
+        return Ok(updated);
     }
 
     [HttpDelete("{id:guid}")]
@@ -95,8 +75,8 @@ public class EventsController(IEventService eventService) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public IActionResult Delete(Guid id)
     {
-        bool deleted = eventService.Delete(id);
+        eventService.Delete(id);
 
-        return deleted ? NoContent() : NotFound();
+        return NoContent();
     }
 }
