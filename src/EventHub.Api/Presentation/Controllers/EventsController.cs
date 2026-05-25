@@ -14,11 +14,15 @@ public class EventsController(IEventService eventService) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<EventDto>), StatusCodes.Status200OK)]
-    public ActionResult<IEnumerable<EventDto>> GetAll()
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public ActionResult<IEnumerable<EventDto>> GetAll(
+        [FromQuery] string? title,
+        [FromQuery] DateTimeOffset? from,
+        [FromQuery] DateTimeOffset? to)
     {
-        IEnumerable<EventDto> events = eventService.GetAll();
+        GetEventsDto dto = new() { Title = title, From = from, To = to };
 
-        return Ok(events);
+        return Ok(eventService.GetAll(dto));
     }
 
     [HttpGet("{id:guid}")]

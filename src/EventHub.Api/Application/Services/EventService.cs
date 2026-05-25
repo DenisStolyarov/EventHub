@@ -1,7 +1,9 @@
 using EventHub.Api.Application.Dto.Events;
+using EventHub.Api.Application.Errors;
 using EventHub.Api.Application.Exceptions;
 using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Domain.Entities;
+using EventHub.Api.Domain.Filters;
 using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Domain.ValueObjects;
 
@@ -9,11 +11,19 @@ namespace EventHub.Api.Application.Services;
 
 public class EventService(IEventRepository repository) : IEventService
 {
-    public IEnumerable<EventDto> GetAll()
+    public IEnumerable<EventDto> GetAll(GetEventsDto dto)
     {
-        IEnumerable<Event> events = repository.GetAll();
+        DateTime? from = dto.From?.UtcDateTime;
+        DateTime? to = dto.To?.UtcDateTime;
 
-        return events.ToDto();
+        if (from.HasValue && to.HasValue && from.Value > to.Value)
+        {
+            throw new ValidationException(nameof(GetEventsDto.From), EventServiceErrors.FromMustBeBeforeTo);
+        }
+
+        EventFilter filter = new() { Title = dto.Title, From = from, To = to };
+
+        return repository.GetAll(filter).ToDto();
     }
 
     public EventDto GetById(Guid id)

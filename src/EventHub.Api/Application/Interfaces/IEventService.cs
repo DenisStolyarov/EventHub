@@ -4,7 +4,7 @@ namespace EventHub.Api.Application.Interfaces;
 
 public interface IEventService
 {
-    IEnumerable<EventDto> GetAll();
+    IEnumerable<EventDto> GetAll(GetEventsDto dto);
 
     EventDto GetById(Guid id);
 
