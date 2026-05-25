@@ -1,10 +1,11 @@
+using EventHub.Api.Application.Dto;
 using EventHub.Api.Application.Dto.Events;
 
 namespace EventHub.Api.Application.Interfaces;
 
 public interface IEventService
 {
-    IEnumerable<EventDto> GetAll(GetEventsDto dto);
+    PaginatedResult<EventDto> GetAll(GetEventsDto dto);
 
     EventDto GetById(Guid id);
 

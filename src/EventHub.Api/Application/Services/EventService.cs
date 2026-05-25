@@ -1,3 +1,5 @@
+using EventHub.Api.Application.Constants;
+using EventHub.Api.Application.Dto;
 using EventHub.Api.Application.Dto.Events;
 using EventHub.Api.Application.Errors;
 using EventHub.Api.Application.Exceptions;
@@ -11,7 +13,7 @@ namespace EventHub.Api.Application.Services;
 
 public class EventService(IEventRepository repository) : IEventService
 {
-    public IEnumerable<EventDto> GetAll(GetEventsDto dto)
+    public PaginatedResult<EventDto> GetAll(GetEventsDto dto)
     {
         DateTime? from = dto.From?.UtcDateTime;
         DateTime? to = dto.To?.UtcDateTime;
@@ -23,7 +25,25 @@ public class EventService(IEventRepository repository) : IEventService
 
         EventFilter filter = new() { Title = dto.Title, From = from, To = to };
 
-        return repository.GetAll(filter).ToDto();
+        int pageNumber = Math.Max(1, dto.Page);
+        int pageSize = Math.Clamp(dto.PageSize, 1, Pagination.MaxPageSize);
+
+        int totalRecords = repository.Count(filter);
+        int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+
+        IEnumerable<EventDto> data = repository
+            .GetAll(filter, pageNumber, pageSize)
+            .ToDto();
+
+        return new PaginatedResult<EventDto>
+        {
+            Data = data,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalRecords = totalRecords,
+            TotalPages = totalPages,
+            ItemsOnPage = data.Count(),
+        };
     }
 
     public EventDto GetById(Guid id)

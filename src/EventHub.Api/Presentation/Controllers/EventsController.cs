@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using EventHub.Api.Application.Dto;
 using EventHub.Api.Application.Dto.Events;
 using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Presentation.Dto.Events;
@@ -13,14 +14,18 @@ namespace EventHub.Api.Presentation.Controllers;
 public class EventsController(IEventService eventService) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<EventDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PaginatedResult<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public ActionResult<IEnumerable<EventDto>> GetAll(
-        [FromQuery] string? title,
-        [FromQuery] DateTimeOffset? from,
-        [FromQuery] DateTimeOffset? to)
+    public ActionResult<PaginatedResult<EventDto>> GetAll([AsParameters] GetEventsRequest request)
     {
-        GetEventsDto dto = new() { Title = title, From = from, To = to };
+        GetEventsDto dto = new()
+        {
+            Title = request.Title,
+            From = request.From,
+            To = request.To,
+            Page = request.Page,
+            PageSize = request.PageSize
+        };
 
         return Ok(eventService.GetAll(dto));
     }

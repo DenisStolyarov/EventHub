@@ -22,11 +22,36 @@ API versioning is supported via URL segment, `X-Api-Version` header, or `api-ver
 
 | Method   | Endpoint              | Description              | Success Status | Error Status |
 |----------|-----------------------|--------------------------|----------------|--------------|
-| GET      | /api/v1/events        | Get all events           | 200 OK         | -            |
+| GET      | /api/v1/events        | Get events with filtering and pagination | 200 OK         | 400 Bad Request |
 | GET      | /api/v1/events/{id}   | Get event by id          | 200 OK         | 404 Not Found|
 | POST     | /api/v1/events        | Create a new event       | 201 Created    | 400 Bad Request |
 | PUT      | /api/v1/events/{id}   | Update an event          | 200 OK         | 404 Not Found / 400 Bad Request |
 | DELETE   | /api/v1/events/{id}   | Delete an event          | 204 No Content | 404 Not Found|
+
+### Query Parameters (GET /api/v1/events)
+
+| Parameter | Type           | Required | Default | Description                            |
+|-----------|----------------|----------|---------|----------------------------------------|
+| title     | string         | No       | -       | Filter by event title (partial match)   |
+| from      | DateTimeOffset | No       | -       | Filter events starting from this date  |
+| to        | DateTimeOffset | No       | -       | Filter events ending before this date  |
+| page      | int            | No       | 1       | Page number (>= 1)                    |
+| pageSize  | int            | No       | 10      | Items per page (1–50)                  |
+
+### Paginated Response
+
+The response is wrapped in a `PaginatedResult` object:
+
+| Field           | Type    | Description                              |
+|-----------------|---------|------------------------------------------|
+| data            | array   | Array of events on the current page      |
+| pageNumber      | int     | Current page number                      |
+| pageSize        | int     | Number of items per page                  |
+| totalPages      | int     | Total number of pages                     |
+| totalRecords    | int     | Total number of matching events          |
+| itemsOnPage     | int     | Number of items on the current page      |
+| hasNextPage     | bool    | Whether a next page exists               |
+| hasPreviousPage | bool    | Whether a previous page exists           |
 
 ### Versioning Examples
 
