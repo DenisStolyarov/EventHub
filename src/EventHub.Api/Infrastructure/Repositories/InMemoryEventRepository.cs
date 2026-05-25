@@ -9,28 +9,22 @@ public class InMemoryEventRepository : IEventRepository
     private readonly Lock _lock = new();
     private readonly List<Event> _events = [];
 
-    public IEnumerable<Event> GetAll(EventFilter filter)
+    public int Count(EventFilter filter)
     {
         lock (_lock)
         {
-            IEnumerable<Event> query = _events;
+            return ApplyFilter(_events, filter).Count();
+        }
+    }
 
-            if (!string.IsNullOrWhiteSpace(filter.Title))
-            {
-                query = query.Where(e => e.Title.Contains(filter.Title, StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (filter.From.HasValue)
-            {
-                query = query.Where(e => e.StartAt >= filter.From.Value);
-            }
-
-            if (filter.To.HasValue)
-            {
-                query = query.Where(e => e.EndAt <= filter.To.Value);
-            }
-
-            return [.. query];
+    public IEnumerable<Event> GetAll(EventFilter filter, int pageNumber, int pageSize)
+    {
+        lock (_lock)
+        {
+            IEnumerable<Event> filteredEvents = ApplyFilter(_events, filter);
+            IEnumerable<Event> pagedEvents = GetPage(filteredEvents, pageNumber, pageSize);
+            
+            return [.. pagedEvents];
         }
     }
 
@@ -79,4 +73,30 @@ public class InMemoryEventRepository : IEventRepository
             _events.RemoveAt(index);
         }
     }
+
+    private static IEnumerable<Event> ApplyFilter(IEnumerable<Event> events, EventFilter filter)
+    {
+        IEnumerable<Event> query = events;
+
+        if (!string.IsNullOrWhiteSpace(filter.Title))
+        {
+            query = query.Where(e => e.Title.Contains(filter.Title, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (filter.From.HasValue)
+        {
+            query = query.Where(e => e.StartAt >= filter.From.Value);
+        }
+
+        if (filter.To.HasValue)
+        {
+            query = query.Where(e => e.EndAt <= filter.To.Value);
+        }
+
+        return query;
+    }
+
+    private static IEnumerable<Event> GetPage(IEnumerable<Event> events, int pageNumber, int pageSize) => events
+        .Skip((pageNumber - 1) * pageSize)
+        .Take(pageSize);
 }

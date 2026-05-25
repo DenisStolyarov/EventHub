@@ -5,7 +5,9 @@ namespace EventHub.Api.Domain.Interfaces;
 
 public interface IEventRepository
 {
-    IEnumerable<Event> GetAll(EventFilter filter);
+    int Count(EventFilter filter);
+
+    IEnumerable<Event> GetAll(EventFilter filter, int page, int pageSize);
 
     Event? GetById(Guid id);
 
