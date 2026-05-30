@@ -16,6 +16,14 @@ dotnet run --project src/EventHub.Api
 
 After launch, Swagger UI is available at: [http://localhost:5000/swagger](http://localhost:5000/swagger).
 
+## Testing
+
+Run all tests from the repository root:
+
+```bash
+dotnet test
+```
+
 ## API Endpoints
 
 API versioning is supported via URL segment, `X-Api-Version` header, or `api-version` query string parameter. The default version is 1.0.

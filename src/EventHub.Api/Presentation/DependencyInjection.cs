@@ -13,7 +13,7 @@ public static class DependencyInjection
         services.AddProblemDetails();
         services.AddSwaggerGen();
         services.AddEndpointsApiExplorer();
-        
+
         services.AddExceptionHandler<GlobalExceptionHandler>();
 
         services.ConfigureOptions<SwaggerConfiguration>();
