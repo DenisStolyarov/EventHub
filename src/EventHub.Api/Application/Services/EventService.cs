@@ -66,10 +66,11 @@ public class EventService(IEventRepository repository) : IEventService
 
     public EventDto Update(Guid id, UpdateEventDto dto)
     {
+        Period period = new(dto.StartAt.UtcDateTime, dto.EndAt.UtcDateTime);
+
         Event? existing = repository.GetById(id)
             ?? throw new NotFoundException(nameof(Event), id);
 
-        Period period = new(dto.StartAt.UtcDateTime, dto.EndAt.UtcDateTime);
         Event updated = new(existing.Id, dto.Title, dto.Description, period);
 
         repository.Update(updated);

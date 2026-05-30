@@ -23,7 +23,7 @@ public class InMemoryEventRepository : IEventRepository
         {
             IEnumerable<Event> filteredEvents = ApplyFilter(_events, filter);
             IEnumerable<Event> pagedEvents = GetPage(filteredEvents, pageNumber, pageSize);
-            
+
             return [.. pagedEvents];
         }
     }

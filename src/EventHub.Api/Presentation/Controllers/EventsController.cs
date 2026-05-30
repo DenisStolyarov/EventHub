@@ -16,7 +16,7 @@ public class EventsController(IEventService eventService) : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PaginatedResult<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public ActionResult<PaginatedResult<EventDto>> GetAll([AsParameters] GetEventsRequest request)
+    public ActionResult<PaginatedResult<EventDto>> GetAll([FromQuery] GetEventsRequest request)
     {
         GetEventsDto dto = new()
         {
