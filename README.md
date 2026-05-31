@@ -33,8 +33,10 @@ API versioning is supported via URL segment, `X-Api-Version` header, or `api-ver
 | GET      | /api/v1/events        | Get events with filtering and pagination | 200 OK         | 400 Bad Request |
 | GET      | /api/v1/events/{id}   | Get event by id          | 200 OK         | 404 Not Found|
 | POST     | /api/v1/events        | Create a new event       | 201 Created    | 400 Bad Request |
+| POST     | /api/v1/events/{id}/book | Create a booking for an event | 202 Accepted | 404 Not Found |
 | PUT      | /api/v1/events/{id}   | Update an event          | 200 OK         | 404 Not Found / 400 Bad Request |
 | DELETE   | /api/v1/events/{id}   | Delete an event          | 204 No Content | 404 Not Found|
+| GET      | /api/v1/bookings/{id} | Get booking by id        | 200 OK         | 404 Not Found|
 
 ### Query Parameters (GET /api/v1/events)
 
@@ -88,6 +90,24 @@ GET /api/v1/events?api-version=1.0
 | description | string         | No       | Event description |
 | startAt     | DateTimeOffset | Yes      | Event start time (UTC, ISO 8601 with Z suffix) |
 | endAt       | DateTimeOffset | Yes      | Event end time (UTC, ISO 8601 with Z suffix, must be after startAt) |
+
+## Booking Model
+
+Booking endpoints return `BookingInfo`.
+
+| Field   | Type          | Description                  |
+|---------|---------------|------------------------------|
+| id      | Guid          | Booking identifier           |
+| eventId | Guid          | Identifier of the booked event |
+| status  | BookingStatus | Current booking status       |
+
+### Booking Status
+
+| Value     | Description                         |
+|-----------|-------------------------------------|
+| Pending   | Booking was created and awaits processing |
+| Confirmed | Booking was confirmed              |
+| Rejected  | Booking was rejected               |
 
 ### Date/Time Format
 
@@ -152,6 +172,6 @@ Errors are returned as Problem Details JSON.
 
 ## Data Storage
 
-Event data is stored in application memory. All data is lost when the application restarts.
+Event and booking data is stored in application memory. All data is lost when the application restarts.
 
 Filtering and pagination are implemented in the repository layer because they are data-query concerns. EventService validates input, normalizes pagination parameters, creates filter, and maps results to DTOs. This keeps the service independent from storage details and allows future database-backed repositories to execute filters and pagination efficiently at the storage level.

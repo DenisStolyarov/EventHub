@@ -4,7 +4,7 @@ namespace EventHub.Api.Application.Interfaces;
 
 public interface IBookingService
 {
-    Task<Guid> CreateBookingAsync(Guid eventId);
+    Task<BookingInfo> CreateBookingAsync(Guid eventId);
 
     Task<BookingInfo> GetBookingByIdAsync(Guid bookingId);
 }

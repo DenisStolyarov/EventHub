@@ -8,7 +8,7 @@ namespace EventHub.Api.Application.Services;
 
 public class BookingService(IBookingRepository bookingRepository, IEventRepository eventRepository) : IBookingService
 {
-    public Task<Guid> CreateBookingAsync(Guid eventId)
+    public Task<BookingInfo> CreateBookingAsync(Guid eventId)
     {
         Event @event = eventRepository.GetById(eventId)
             ?? throw new NotFoundException(nameof(Event), eventId);
@@ -17,7 +17,7 @@ public class BookingService(IBookingRepository bookingRepository, IEventReposito
 
         bookingRepository.Add(booking);
 
-        return Task.FromResult(booking.Id);
+        return Task.FromResult(booking.ToInfo());
     }
 
     public Task<BookingInfo> GetBookingByIdAsync(Guid bookingId)
