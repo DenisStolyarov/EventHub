@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
 using EventHub.Api.Presentation.Configurations;
+using EventHub.Api.Presentation.ExceptionHandlers;
 
 namespace EventHub.Api.Presentation;
 
@@ -9,8 +10,11 @@ public static class DependencyInjection
     public static IServiceCollection AddPresentation(this IServiceCollection services)
     {
         services.AddControllers();
-        services.AddEndpointsApiExplorer();
+        services.AddProblemDetails();
         services.AddSwaggerGen();
+        services.AddEndpointsApiExplorer();
+
+        services.AddExceptionHandler<GlobalExceptionHandler>();
 
         services.ConfigureOptions<SwaggerConfiguration>();
 
@@ -36,6 +40,9 @@ public static class DependencyInjection
 
     public static WebApplication UsePresentation(this WebApplication app)
     {
+        app.UseExceptionHandler();
+        app.UseStatusCodePages();
+
         if (app.Environment.IsDevelopment())
         {
             IApiVersionDescriptionProvider provider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();

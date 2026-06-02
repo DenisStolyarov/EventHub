@@ -1,3 +1,4 @@
+using EventHub.Api.Domain.Exceptions;
 using EventHub.Api.Domain.ValueObjects;
 
 namespace EventHub.Api.Domain.Entities;
@@ -16,7 +17,7 @@ public class Event
     {
         get;
         private set => field = string.IsNullOrWhiteSpace(value)
-            ? throw new ArgumentException("Title cannot be empty.", nameof(Title))
+            ? throw new DomainException(nameof(Title), "Title cannot be empty.")
             : value.Trim();
     }
 

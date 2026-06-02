@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using EventHub.Api.Application.Dto;
 using EventHub.Api.Application.Dto.Events;
 using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Presentation.Dto.Events;
@@ -13,29 +14,36 @@ namespace EventHub.Api.Presentation.Controllers;
 public class EventsController(IEventService eventService) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<EventDto>), StatusCodes.Status200OK)]
-    public ActionResult<IEnumerable<EventDto>> GetAll()
+    [ProducesResponseType(typeof(PaginatedResult<EventDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public ActionResult<PaginatedResult<EventDto>> GetAll([FromQuery] GetEventsRequest request)
     {
-        IEnumerable<EventDto> events = eventService.GetAll();
+        GetEventsDto dto = new()
+        {
+            Title = request.Title,
+            From = request.From,
+            To = request.To,
+            Page = request.Page,
+            PageSize = request.PageSize
+        };
 
-        return Ok(events);
+        return Ok(eventService.GetAll(dto));
     }
 
     [HttpGet("{id:guid}")]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<EventDto> GetById(Guid id)
     {
-        EventDto? @event = eventService.GetById(id);
+        EventDto @event = eventService.GetById(id);
 
-        return @event is null
-            ? NotFound()
-            : Ok(@event);
+        return Ok(@event);
     }
 
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(EventDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public ActionResult<EventDto> Create(CreateEventRequest request)
     {
         CreateEventDto dto = new()
@@ -46,24 +54,16 @@ public class EventsController(IEventService eventService) : ControllerBase
             EndAt = request.EndAt
         };
 
-        try
-        {
-            EventDto created = eventService.Create(dto);
+        EventDto created = eventService.Create(dto);
 
-            return CreatedAtAction(nameof(GetById), new { id = created.Id, version = "1.0" }, created);
-        }
-        catch (ArgumentException ex)
-        {
-            ModelState.AddModelError(ex.ParamName ?? string.Empty, ex.Message);
-
-            return ValidationProblem(ModelState);
-        }        
+        return CreatedAtAction(nameof(GetById), new { id = created.Id, version = "1.0" }, created);
     }
 
     [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public ActionResult<EventDto> Update(Guid id, UpdateEventRequest request)
     {
         UpdateEventDto dto = new()
@@ -73,21 +73,10 @@ public class EventsController(IEventService eventService) : ControllerBase
             StartAt = request.StartAt,
             EndAt = request.EndAt
         };
-        
-        try
-        {
-            EventDto? updated = eventService.Update(id, dto);
 
-            return updated is null
-                ? NotFound()
-                : Ok(updated);
-        }
-        catch (ArgumentException ex)
-        {
-            ModelState.AddModelError(ex.ParamName ?? string.Empty, ex.Message);
+        EventDto updated = eventService.Update(id, dto);
 
-            return ValidationProblem(ModelState);
-        }
+        return Ok(updated);
     }
 
     [HttpDelete("{id:guid}")]
@@ -95,8 +84,8 @@ public class EventsController(IEventService eventService) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public IActionResult Delete(Guid id)
     {
-        bool deleted = eventService.Delete(id);
+        eventService.Delete(id);
 
-        return deleted ? NoContent() : NotFound();
+        return NoContent();
     }
 }
