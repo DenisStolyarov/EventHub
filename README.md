@@ -106,6 +106,50 @@ Using the `Z` suffix ensures that both the client and server interpret the times
 - `endAt` is required and must be later than `startAt`
 - `description` is optional
 
+## Error Responses
+
+Errors are returned as Problem Details JSON.
+
+### 400 Bad Request
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+  "title": "Validation Error",
+  "status": 400,
+  "errors": {
+    "From": [
+      "'from' must be before or equal to 'to'."
+    ]
+  },
+  "traceId": "00-7d6f9f2e4f0b7c1c0f2e8b9d2f4a6c01-1b2c3d4e5f6a7b8c-00"
+}
+```
+
+### 404 Not Found
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "'Event' with id '01972f5f-2c71-7368-92dc-9ea346eb5442' was not found.",
+  "traceId": "00-7d6f9f2e4f0b7c1c0f2e8b9d2f4a6c01-1b2c3d4e5f6a7b8c-00"
+}
+```
+
+### 500 Internal Server Error
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.6.1",
+  "title": "Internal Server Error",
+  "status": 500,
+  "detail": "An unexpected error occurred.",
+  "traceId": "00-7d6f9f2e4f0b7c1c0f2e8b9d2f4a6c01-1b2c3d4e5f6a7b8c-00"
+}
+```
+
 ## Data Storage
 
 Event data is stored in application memory. All data is lost when the application restarts.
