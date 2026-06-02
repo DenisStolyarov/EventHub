@@ -416,6 +416,25 @@ public class EventServiceTests
         _repository.Verify(r => r.Delete(id), Times.Once);
     }
 
+    [Fact]
+    public void Delete_EventDoesNotExist_ThrowsNotFoundException()
+    {
+        // Arrange
+        Guid id = Guid.NewGuid();
+
+        _repository.Setup(r => r.GetById(id)).Returns((Event?)null);
+
+        // Act
+        Action act = () => _service.Delete(id);
+
+        // Assert
+        act.Should()
+            .Throw<NotFoundException>()
+            .Where(e => e.EntityId.Equals(id) && e.EntityName == nameof(Event));
+
+        _repository.Verify(r => r.Delete(It.IsAny<Guid>()), Times.Never);
+    }
+
     private void SetupEmptyGetAll()
     {
         _repository.Setup(r => r.Count(It.IsAny<EventFilter>())).Returns(0);
