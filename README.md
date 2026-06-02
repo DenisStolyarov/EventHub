@@ -153,3 +153,5 @@ Errors are returned as Problem Details JSON.
 ## Data Storage
 
 Event data is stored in application memory. All data is lost when the application restarts.
+
+Filtering and pagination are implemented in the repository layer because they are data-query concerns. EventService validates input, normalizes pagination parameters, creates filter, and maps results to DTOs. This keeps the service independent from storage details and allows future database-backed repositories to execute filters and pagination efficiently at the storage level.
