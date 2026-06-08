@@ -96,6 +96,56 @@ public class BookingServiceTests
     }
 
     [Fact]
+    public async Task GetBookingByIdAsync_WhenBookingConfirmed_ReturnsUpdatedStatus()
+    {
+        // Arrange
+        Guid bookingId = Guid.NewGuid();
+        Guid eventId = Guid.NewGuid();
+        Booking booking = new(bookingId, eventId);
+
+        _bookingRepository
+            .Setup(r => r.GetById(bookingId))
+            .Returns(booking);
+
+        BookingInfo before = await _service.GetBookingByIdAsync(bookingId);
+
+        before.Status.Should().Be(BookingStatus.Pending);
+
+        // Act
+        booking.Confirm();
+
+        // Assert
+        BookingInfo after = await _service.GetBookingByIdAsync(bookingId);
+
+        after.Status.Should().Be(BookingStatus.Confirmed);
+    }
+
+    [Fact]
+    public async Task GetBookingByIdAsync_WhenBookingRejected_ReturnsUpdatedStatus()
+    {
+        // Arrange
+        Guid bookingId = Guid.NewGuid();
+        Guid eventId = Guid.NewGuid();
+        Booking booking = new(bookingId, eventId);
+
+        _bookingRepository
+            .Setup(r => r.GetById(bookingId))
+            .Returns(booking);
+
+        BookingInfo before = await _service.GetBookingByIdAsync(bookingId);
+
+        before.Status.Should().Be(BookingStatus.Pending);
+
+        // Act
+        booking.Reject();
+
+        // Assert
+        BookingInfo after = await _service.GetBookingByIdAsync(bookingId);
+
+        after.Status.Should().Be(BookingStatus.Rejected);
+    }
+
+    [Fact]
     public async Task CreateBookingAsync_EventDoesNotExist_ThrowsNotFoundException()
     {
         // Arrange
