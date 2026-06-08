@@ -6,6 +6,8 @@ public interface IBookingRepository
 {
     IEnumerable<Booking> GetAll();
 
+    IEnumerable<Booking> GetPendingBookings();
+
     Booking? GetById(Guid id);
 
     void Add(Booking booking);

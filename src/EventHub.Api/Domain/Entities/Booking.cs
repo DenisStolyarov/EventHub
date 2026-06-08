@@ -21,4 +21,16 @@ public class Booking
         Status = BookingStatus.Pending;
         CreatedAt = DateTime.UtcNow;
     }
+
+    public void Confirm()
+    {
+        Status = BookingStatus.Confirmed;
+        ProcessedAt = DateTime.UtcNow;
+    }
+
+    public void Reject()
+    {
+        Status = BookingStatus.Rejected;
+        ProcessedAt = DateTime.UtcNow;
+    }
 }

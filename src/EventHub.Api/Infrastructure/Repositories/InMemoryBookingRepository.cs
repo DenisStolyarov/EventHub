@@ -1,4 +1,5 @@
 using EventHub.Api.Domain.Entities;
+using EventHub.Api.Domain.Enums;
 using EventHub.Api.Domain.Interfaces;
 
 namespace EventHub.Api.Infrastructure.Repositories;
@@ -13,6 +14,14 @@ public class InMemoryBookingRepository : IBookingRepository
         lock (_lock)
         {
             return [.. _bookings];
+        }
+    }
+
+    public IEnumerable<Booking> GetPendingBookings()
+    {
+        lock (_lock)
+        {
+            return [.. _bookings.Where(booking => booking.Status is BookingStatus.Pending)];
         }
     }
 
