@@ -4,7 +4,7 @@ using EventHub.Api.Domain.ValueObjects;
 using EventHub.Api.Infrastructure.Repositories;
 using FluentAssertions;
 
-namespace EventHub.Tests;
+namespace EventHub.Tests.Repositories;
 
 public class InMemoryEventRepositoryTests
 {

@@ -3,7 +3,7 @@ using EventHub.Api.Domain.Enums;
 using EventHub.Api.Infrastructure.Repositories;
 using FluentAssertions;
 
-namespace EventHub.Tests;
+namespace EventHub.Tests.Repositories;
 
 public class InMemoryBookingRepositoryTests
 {

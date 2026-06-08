@@ -2,7 +2,7 @@ using EventHub.Api.Domain.Entities;
 using EventHub.Api.Domain.Enums;
 using FluentAssertions;
 
-namespace EventHub.Tests;
+namespace EventHub.Tests.Entities;
 
 public class BookingTests
 {

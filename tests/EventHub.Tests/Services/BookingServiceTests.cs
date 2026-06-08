@@ -8,7 +8,7 @@ using EventHub.Api.Domain.ValueObjects;
 using FluentAssertions;
 using Moq;
 
-namespace EventHub.Tests;
+namespace EventHub.Tests.Services;
 
 public class BookingServiceTests
 {
