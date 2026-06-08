@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using EventHub.Api.Application.Dto;
+using EventHub.Api.Application.Dto.Bookings;
 using EventHub.Api.Application.Dto.Events;
 using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Presentation.Dto.Events;
@@ -11,7 +12,7 @@ namespace EventHub.Api.Presentation.Controllers;
 [ApiVersion("1.0")]
 [Produces("application/json")]
 [Route("api/v{version:apiVersion}/events")]
-public class EventsController(IEventService eventService) : ControllerBase
+public class EventsController(IEventService eventService, IBookingService bookingService) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(PaginatedResult<EventDto>), StatusCodes.Status200OK)]
@@ -87,5 +88,19 @@ public class EventsController(IEventService eventService) : ControllerBase
         eventService.Delete(id);
 
         return NoContent();
+    }
+
+    [HttpPost("{id:guid}/book")]
+    [ProducesResponseType(typeof(BookingInfo), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BookingInfo>> Book(Guid id)
+    {
+        BookingInfo booking = await bookingService.CreateBookingAsync(id);
+
+        return AcceptedAtAction(
+            nameof(BookingsController.GetById),
+            "Bookings",
+            new { id = booking.Id, version = "1.0" },
+            booking);
     }
 }
