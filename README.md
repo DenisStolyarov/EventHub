@@ -170,6 +170,30 @@ Errors are returned as Problem Details JSON.
 }
 ```
 
+## Background Processing
+
+Booking status transitions are handled by a background service that polls for pending bookings on a fixed schedule.
+
+### Processing Flow
+
+1. Every 5 seconds the service polls for bookings with `Pending` status
+2. Each pending booking is processed simulating an external system call
+3. After the delay, the booking transitions from `Pending` to `Confirmed`
+4. `ProcessedAt` is recorded at the time of the status change
+5. The updated booking is persisted
+
+### Lifecycle
+
+```
+POST /events/{id}/book → Pending
+                            ↓
+                      Polling every 5s
+                            ↓
+                    External system call
+                            ↓
+                        Confirmed
+```
+
 ## Data Storage
 
 Event and booking data is stored in application memory. All data is lost when the application restarts.
