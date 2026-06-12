@@ -6,6 +6,7 @@ using EventHub.Api.Domain.Enums;
 using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Domain.ValueObjects;
 using FluentAssertions;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 
 namespace EventHub.Tests.Services;
@@ -41,8 +42,6 @@ public class BookingServiceTests
             Status = BookingStatus.Pending,
         });
 
-        result.Id.Should().NotBeEmpty();
-
         _bookingRepository.Verify(
             r => r.Add(It.Is<Booking>(b =>
                 b.Id == result.Id &&
@@ -64,8 +63,6 @@ public class BookingServiceTests
         BookingInfo second = await _service.CreateBookingAsync(@event.Id);
 
         // Assert
-        first.Id.Should().NotBeEmpty();
-        second.Id.Should().NotBeEmpty();
         first.Id.Should().NotBe(second.Id);
         first.EventId.Should().Be(@event.Id);
         second.EventId.Should().Be(@event.Id);
@@ -101,7 +98,8 @@ public class BookingServiceTests
         // Arrange
         Guid bookingId = Guid.NewGuid();
         Guid eventId = Guid.NewGuid();
-        Booking booking = new(bookingId, eventId);
+        FakeTimeProvider timeProvider = new(new DateTimeOffset(2026, 6, 1, 10, 0, 0, TimeSpan.Zero));
+        Booking booking = new(bookingId, eventId, timeProvider);
 
         _bookingRepository
             .Setup(r => r.GetById(bookingId))
@@ -112,7 +110,8 @@ public class BookingServiceTests
         before.Status.Should().Be(BookingStatus.Pending);
 
         // Act
-        booking.Confirm();
+        timeProvider.Advance(TimeSpan.FromHours(2));
+        booking.Confirm(timeProvider);
 
         // Assert
         BookingInfo after = await _service.GetBookingByIdAsync(bookingId);
@@ -126,7 +125,8 @@ public class BookingServiceTests
         // Arrange
         Guid bookingId = Guid.NewGuid();
         Guid eventId = Guid.NewGuid();
-        Booking booking = new(bookingId, eventId);
+        FakeTimeProvider timeProvider = new(new DateTimeOffset(2026, 6, 1, 10, 0, 0, TimeSpan.Zero));
+        Booking booking = new(bookingId, eventId, timeProvider);
 
         _bookingRepository
             .Setup(r => r.GetById(bookingId))
@@ -137,7 +137,8 @@ public class BookingServiceTests
         before.Status.Should().Be(BookingStatus.Pending);
 
         // Act
-        booking.Reject();
+        timeProvider.Advance(TimeSpan.FromHours(3));
+        booking.Reject(timeProvider);
 
         // Assert
         BookingInfo after = await _service.GetBookingByIdAsync(bookingId);

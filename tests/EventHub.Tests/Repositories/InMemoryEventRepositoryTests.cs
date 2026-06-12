@@ -15,21 +15,42 @@ public class InMemoryEventRepositoryTests
 
     private readonly InMemoryEventRepository _repository = new();
 
-    [Fact]
-    public void GetAll_TitleFilterProvided_ReturnsMatchingEvents()
+    [Theory]
+    [InlineData("meetup")]
+    [InlineData("MEETUP")]
+    [InlineData("Meetup")]
+    [InlineData("conference")]
+    [InlineData("CONFERENCE")]
+    [InlineData("Conference")]
+    public void GetAll_TitleFilterProvided_FindsMatchingEventsCaseInsensitive(string title)
     {
         // Arrange
         SeedEvents();
 
-        EventFilter filter = new() { Title = "meetup" };
+        EventFilter filter = new() { Title = title };
 
         // Act
         IEnumerable<Event> result = _repository.GetAll(filter, pageNumber: 1, pageSize: 10);
 
         // Assert
-        result.Select(e => e.Id)
-            .Should()
-            .Equal(MeetupId);
+        result.Should().NotBeEmpty();
+        result.Select(e => e.Title)
+            .Should().OnlyContain(t => t.Contains(title, StringComparison.InvariantCultureIgnoreCase));
+    }
+
+    [Fact]
+    public void GetAll_TitleFilterProvided_FindsExactTitleMatchCaseInsensitive()
+    {
+        // Arrange
+        SeedEvents();
+
+        EventFilter filter = new() { Title = "Cloud Conference" };
+
+        // Act
+        IEnumerable<Event> result = _repository.GetAll(filter, pageNumber: 1, pageSize: 10);
+
+        // Assert
+        result.Select(e => e.Id).Should().Equal(ConferenceId);
     }
 
     [Theory]

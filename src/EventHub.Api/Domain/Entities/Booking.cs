@@ -14,23 +14,29 @@ public class Booking
 
     public DateTime? ProcessedAt { get; private set; }
 
-    public Booking(Guid id, Guid eventId)
+    public Booking(Guid id, Guid eventId, TimeProvider? timeProvider = null)
     {
+        TimeProvider tp = timeProvider ?? TimeProvider.System;
+
         Id = id;
         EventId = eventId;
         Status = BookingStatus.Pending;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = tp.GetUtcNow().UtcDateTime;
     }
 
-    public void Confirm()
+    public void Confirm(TimeProvider? timeProvider = null)
     {
+        TimeProvider tp = timeProvider ?? TimeProvider.System;
+
         Status = BookingStatus.Confirmed;
-        ProcessedAt = DateTime.UtcNow;
+        ProcessedAt = tp.GetUtcNow().UtcDateTime;
     }
 
-    public void Reject()
+    public void Reject(TimeProvider? timeProvider = null)
     {
+        TimeProvider tp = timeProvider ?? TimeProvider.System;
+        
         Status = BookingStatus.Rejected;
-        ProcessedAt = DateTime.UtcNow;
+        ProcessedAt = tp.GetUtcNow().UtcDateTime;
     }
 }
