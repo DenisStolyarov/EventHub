@@ -19,14 +19,7 @@ public class EventsController(IEventService eventService, IBookingService bookin
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public ActionResult<PaginatedResult<EventDto>> GetAll([FromQuery] GetEventsRequest request)
     {
-        GetEventsDto dto = new()
-        {
-            Title = request.Title,
-            From = request.From,
-            To = request.To,
-            Page = request.Page,
-            PageSize = request.PageSize
-        };
+        GetEventsDto dto = request.ToDto();
 
         return Ok(eventService.GetAll(dto));
     }
@@ -47,13 +40,7 @@ public class EventsController(IEventService eventService, IBookingService bookin
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public ActionResult<EventDto> Create(CreateEventRequest request)
     {
-        CreateEventDto dto = new()
-        {
-            Title = request.Title,
-            Description = request.Description,
-            StartAt = request.StartAt,
-            EndAt = request.EndAt
-        };
+        CreateEventDto dto = request.ToDto();
 
         EventDto created = eventService.Create(dto);
 
@@ -67,13 +54,7 @@ public class EventsController(IEventService eventService, IBookingService bookin
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public ActionResult<EventDto> Update(Guid id, UpdateEventRequest request)
     {
-        UpdateEventDto dto = new()
-        {
-            Title = request.Title,
-            Description = request.Description,
-            StartAt = request.StartAt,
-            EndAt = request.EndAt
-        };
+        UpdateEventDto dto = request.ToDto();
 
         EventDto updated = eventService.Update(id, dto);
 
