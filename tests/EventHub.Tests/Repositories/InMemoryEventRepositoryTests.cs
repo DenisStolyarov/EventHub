@@ -4,6 +4,8 @@ using EventHub.Api.Domain.ValueObjects;
 using EventHub.Api.Infrastructure.Repositories;
 using FluentAssertions;
 
+using static EventHub.Tests.TestUtilities.TestDateTime;
+
 namespace EventHub.Tests.Repositories;
 
 public class InMemoryEventRepositoryTests
@@ -162,9 +164,6 @@ public class InMemoryEventRepositoryTests
     {
         Period period = new(startAt, endAt);
 
-        return new Event(id, title, $"{title} description", period);
+        return new Event(id, title, $"{title} description", 100, period);
     }
-
-    private static DateTime UtcDateTime(int year, int month, int day, int hour) =>
-        new(year, month, day, hour, 0, 0, DateTimeKind.Utc);
 }

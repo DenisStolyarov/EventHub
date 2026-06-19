@@ -9,6 +9,8 @@ using FluentAssertions;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
+using static EventHub.Tests.TestUtilities.TestDateTime;
+
 namespace EventHub.Tests.Services;
 
 public class BookingServiceTests
@@ -185,10 +187,10 @@ public class BookingServiceTests
     private static Event CreateEvent(Guid id)
     {
         Period period = new(
-            new(2026, 6, 1, 10, 0, 0, DateTimeKind.Utc),
-            new(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc)
+            UtcDateTime(2026, 6, 1, 10),
+            UtcDateTime(2026, 6, 1, 12)
         );
 
-        return new(id, "Event title", "Event description", period);
+        return new(id, "Event title", "Event description", 100, period);
     }
 }
