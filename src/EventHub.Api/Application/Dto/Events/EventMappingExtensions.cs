@@ -9,6 +9,8 @@ public static class EventMappingExtensions
         Id = @event.Id,
         Title = @event.Title,
         Description = @event.Description,
+        TotalSeats = @event.TotalSeats,
+        AvailableSeats = @event.AvailableSeats,
         StartAt = new(@event.StartAt, TimeSpan.Zero),
         EndAt = new(@event.EndAt, TimeSpan.Zero)
     };

@@ -10,6 +10,9 @@ public sealed record CreateEventRequest
     public string? Description { get; init; }
 
     [Required]
+    public required int TotalSeats { get; init; }
+
+    [Required]
     public required DateTimeOffset StartAt { get; init; }
 
     [Required]

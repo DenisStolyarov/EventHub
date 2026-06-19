@@ -5,6 +5,7 @@ using EventHub.Api.Application.Errors;
 using EventHub.Api.Application.Exceptions;
 using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Domain.Entities;
+using EventHub.Api.Domain.Exceptions;
 using EventHub.Api.Domain.Filters;
 using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Domain.ValueObjects;
@@ -57,7 +58,7 @@ public class EventService(IEventRepository repository) : IEventService
     public EventDto Create(CreateEventDto dto)
     {
         Period period = new(dto.StartAt.UtcDateTime, dto.EndAt.UtcDateTime);
-        Event @event = new(Guid.CreateVersion7(), dto.Title, dto.Description, period);
+        Event @event = new(Guid.CreateVersion7(), dto.Title, dto.Description, dto.TotalSeats, period);
 
         repository.Add(@event);
 
@@ -71,11 +72,11 @@ public class EventService(IEventRepository repository) : IEventService
         Event? existing = repository.GetById(id)
             ?? throw new NotFoundException(nameof(Event), id);
 
-        Event updated = new(existing.Id, dto.Title, dto.Description, period);
+        existing.Update(dto.Title, dto.Description, period);
 
-        repository.Update(updated);
+        repository.Update(existing);
 
-        return updated.ToDto();
+        return existing.ToDto();
     }
 
     public void Delete(Guid id)
