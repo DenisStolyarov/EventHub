@@ -65,6 +65,14 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                 Type = TypeUri(StatusCodes.Status404NotFound),
             },
 
+            NoAvailableSeatsException ex => new ProblemDetails
+            {
+                Title = "No Available Seats",
+                Detail = ex.Message,
+                Status = StatusCodes.Status409Conflict,
+                Type = TypeUri(StatusCodes.Status409Conflict),
+            },
+
             DomainException ex => new ProblemDetails
             {
                 Title = "Domain Rule Violation",
@@ -91,6 +99,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
     {
         StatusCodes.Status400BadRequest => "https://tools.ietf.org/html/rfc9110#section-15.5.1",
         StatusCodes.Status404NotFound => "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+        StatusCodes.Status409Conflict => "https://tools.ietf.org/html/rfc9110#section-15.5.10",
         StatusCodes.Status422UnprocessableEntity => "https://tools.ietf.org/html/rfc9110#section-15.5.21",
         StatusCodes.Status500InternalServerError => "https://tools.ietf.org/html/rfc9110#section-15.6.1",
         _ => $"https://tools.ietf.org/html/rfc9110#section-15.6",

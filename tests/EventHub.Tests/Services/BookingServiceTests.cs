@@ -30,19 +30,26 @@ public class BookingServiceTests
     public async Task CreateBookingAsync_EventExists_ReturnsPendingBookingInfo()
     {
         // Arrange
-        Event @event = CreateEvent(Guid.NewGuid());
+        Event @event = CreateEvent(Guid.NewGuid(), 1);
 
         _eventRepository.Setup(r => r.GetById(@event.Id)).Returns(@event);
+        _eventRepository.Setup(r => r.Update(It.IsAny<Event>()));
 
         // Act
         BookingInfo result = await _service.CreateBookingAsync(@event.Id);
 
         // Assert
-        result.Should().BeEquivalentTo(new
-        {
-            EventId = @event.Id,
-            Status = BookingStatus.Pending,
-        });
+        result.Id.Should().NotBe(Guid.Empty);
+        result.EventId.Should().Be(@event.Id);
+        result.Status.Should().Be(BookingStatus.Pending);
+
+        @event.AvailableSeats.Should().Be(0);
+
+        _eventRepository.Verify(
+            r => r.Update(It.Is<Event>(e => 
+                e.Id == @event.Id &&
+                e.AvailableSeats == 0)),
+            Times.Once);
 
         _bookingRepository.Verify(
             r => r.Add(It.Is<Booking>(b =>
@@ -56,9 +63,10 @@ public class BookingServiceTests
     public async Task CreateBookingAsync_SameEventBookedMultipleTimes_ReturnsUniqueIds()
     {
         // Arrange
-        Event @event = CreateEvent(Guid.NewGuid());
+        Event @event = CreateEvent(Guid.NewGuid(), 2);
 
         _eventRepository.Setup(r => r.GetById(@event.Id)).Returns(@event);
+        _eventRepository.Setup(r => r.Update(It.IsAny<Event>()));
 
         // Act
         BookingInfo first = await _service.CreateBookingAsync(@event.Id);
@@ -66,10 +74,61 @@ public class BookingServiceTests
 
         // Assert
         first.Id.Should().NotBe(second.Id);
+        first.Id.Should().NotBe(Guid.Empty);
+        second.Id.Should().NotBe(Guid.Empty);
         first.EventId.Should().Be(@event.Id);
         second.EventId.Should().Be(@event.Id);
+        first.Status.Should().Be(BookingStatus.Pending);
+        second.Status.Should().Be(BookingStatus.Pending);
 
+        @event.AvailableSeats.Should().Be(0);
+
+        _eventRepository.Verify(r => r.Update(It.IsAny<Event>()), Times.Exactly(2));
         _bookingRepository.Verify(r => r.Add(It.IsAny<Booking>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_NotEnoughSeats_ThrowsNoAvailableSeatsException()
+    {
+        // Arrange
+        Event @event = CreateEvent(Guid.NewGuid(), 1);
+
+        _eventRepository.Setup(r => r.GetById(@event.Id)).Returns(@event);
+        _eventRepository.Setup(r => r.Update(It.IsAny<Event>()));
+
+        // Act
+        BookingInfo first = await _service.CreateBookingAsync(@event.Id);
+        Func<Task> second = () => _service.CreateBookingAsync(@event.Id);
+
+        // Assert
+        first.EventId.Should().Be(@event.Id);
+        first.Status.Should().Be(BookingStatus.Pending);
+
+        @event.AvailableSeats.Should().Be(0);
+
+        await second.Should().ThrowAsync<NoAvailableSeatsException>();
+
+        _eventRepository.Verify(r => r.Update(It.IsAny<Event>()), Times.Once);
+        _bookingRepository.Verify(r => r.Add(It.IsAny<Booking>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_AllSeatsAlreadyReserved_ThrowsNoAvailableSeatsException()
+    {
+        // Arrange
+        Event @event = CreateEvent(Guid.NewGuid(), 1);
+        @event.TryReserveSeats();
+
+        _eventRepository.Setup(r => r.GetById(@event.Id)).Returns(@event);
+
+        // Act
+        Func<Task> act = () => _service.CreateBookingAsync(@event.Id);
+
+        // Assert
+        await act.Should().ThrowAsync<NoAvailableSeatsException>();
+
+        _eventRepository.Verify(r => r.Update(It.IsAny<Event>()), Times.Never);
+        _bookingRepository.Verify(r => r.Add(It.IsAny<Booking>()), Times.Never);
     }
 
     [Fact]
@@ -164,6 +223,7 @@ public class BookingServiceTests
             .ThrowAsync<NotFoundException>()
             .Where(e => e.EntityId.Equals(eventId) && e.EntityName == nameof(Event));
 
+        _eventRepository.Verify(r => r.Update(It.IsAny<Event>()), Times.Never);
         _bookingRepository.Verify(r => r.Add(It.IsAny<Booking>()), Times.Never);
     }
 
@@ -184,13 +244,13 @@ public class BookingServiceTests
             .Where(e => e.EntityId.Equals(bookingId) && e.EntityName == nameof(Booking));
     }
 
-    private static Event CreateEvent(Guid id)
+    private static Event CreateEvent(Guid id, int totalSeats = 100)
     {
         Period period = new(
             UtcDateTime(2026, 6, 1, 10),
             UtcDateTime(2026, 6, 1, 12)
         );
 
-        return new(id, "Event title", "Event description", 100, period);
+        return new(id, "Event title", "Event description", totalSeats, period);
     }
 }
