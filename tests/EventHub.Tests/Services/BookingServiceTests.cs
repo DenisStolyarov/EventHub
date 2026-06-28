@@ -244,6 +244,78 @@ public class BookingServiceTests
             .Where(e => e.EntityId.Equals(bookingId) && e.EntityName == nameof(Booking));
     }
 
+    [Fact]
+    public async Task CreateBookingAsync_ConcurrentOverbooking_ExactlyLimitSucceedsAndExcessThrows()
+    {
+        // Arrange
+        const int totalSeats = 5;
+        const int concurrentRequests = 20;
+        Event @event = CreateEvent(Guid.NewGuid(), totalSeats);
+
+        _eventRepository.Setup(r => r.GetById(@event.Id)).Returns(@event);
+        _eventRepository.Setup(r => r.Update(It.IsAny<Event>()));
+
+        // Act
+        List<Task<BookingInfo>> tasks = Enumerable.Range(0, concurrentRequests)
+            .Select(_ => Task.Run(() => _service.CreateBookingAsync(@event.Id)))
+            .ToList();
+
+        await Task.WhenAll(tasks.Select(t => t.ContinueWith(_ => { })));
+
+        List<BookingInfo> succeeded = tasks
+            .Where(t => t.IsCompletedSuccessfully)
+            .Select(t => t.Result)
+            .ToList();
+
+        List<Exception> exceptions = tasks
+            .Where(t => t.IsFaulted)
+            .Select(t => t.Exception!.InnerException!)
+            .ToList();
+
+        // Assert
+        succeeded.Should().HaveCount(totalSeats);
+        exceptions.Should().HaveCount(concurrentRequests - totalSeats);
+        exceptions.Should().AllSatisfy(e => e.Should().BeOfType<NoAvailableSeatsException>());
+
+        succeeded.Should().OnlyContain(b => b.EventId == @event.Id);
+        succeeded.Should().OnlyContain(b => b.Status == BookingStatus.Pending);
+        succeeded.Select(b => b.Id).Should().OnlyHaveUniqueItems();
+
+        @event.AvailableSeats.Should().Be(0);
+
+        _eventRepository.Verify(r => r.Update(It.IsAny<Event>()), Times.Exactly(totalSeats));
+        _bookingRepository.Verify(r => r.Add(It.IsAny<Booking>()), Times.Exactly(totalSeats));
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_ConcurrentRequests_AllReturnUniqueIds()
+    {
+        // Arrange
+        const int totalSeats = 10;
+        Event @event = CreateEvent(Guid.NewGuid(), totalSeats);
+
+        _eventRepository.Setup(r => r.GetById(@event.Id)).Returns(@event);
+        _eventRepository.Setup(r => r.Update(It.IsAny<Event>()));
+
+        // Act
+        List<Task<BookingInfo>> tasks = Enumerable.Range(0, totalSeats)
+            .Select(_ => Task.Run(() => _service.CreateBookingAsync(@event.Id)))
+            .ToList();
+
+        BookingInfo[] results = await Task.WhenAll(tasks);
+
+        // Assert
+        results.Should().HaveCount(totalSeats);
+        results.Should().OnlyContain(b => b.EventId == @event.Id);
+        results.Should().OnlyContain(b => b.Status == BookingStatus.Pending);
+        results.Select(b => b.Id).Should().OnlyHaveUniqueItems();
+
+        @event.AvailableSeats.Should().Be(0);
+
+        _eventRepository.Verify(r => r.Update(It.IsAny<Event>()), Times.Exactly(totalSeats));
+        _bookingRepository.Verify(r => r.Add(It.IsAny<Booking>()), Times.Exactly(totalSeats));
+    }
+
     private static Event CreateEvent(Guid id, int totalSeats = 100)
     {
         Period period = new(
