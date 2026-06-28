@@ -23,13 +23,13 @@ public class BookingService(IBookingRepository bookingRepository, IEventReposito
             }
 
             eventRepository.Update(@event);
-
-            Booking booking = new(Guid.CreateVersion7(), @event.Id);
-
-            bookingRepository.Add(booking);
-
-            return Task.FromResult(booking.ToInfo());
         }
+
+        Booking booking = new(Guid.CreateVersion7(), eventId);
+
+        bookingRepository.Add(booking);
+
+        return Task.FromResult(booking.ToInfo());
     }
 
     public Task<BookingInfo> GetBookingByIdAsync(Guid bookingId)

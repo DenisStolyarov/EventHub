@@ -68,6 +68,10 @@ public sealed class BookingProcessor(IBookingRepository bookingRepository, IEven
             logger.LogInformation("Booking {id} is processed", booking.Id);
 
         }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to process booking {id}", booking.Id);
