@@ -11,6 +11,8 @@ using EventHub.Api.Domain.ValueObjects;
 using FluentAssertions;
 using Moq;
 
+using static EventHub.Tests.TestUtilities.TestDateTime;
+
 namespace EventHub.Tests.Services;
 
 public class EventServiceTests
@@ -34,6 +36,7 @@ public class EventServiceTests
         {
             Title = "Community Meetup",
             Description = "Local tech talks",
+            TotalSeats = 100,
             StartAt = startAt,
             EndAt = endAt
         };
@@ -47,6 +50,8 @@ public class EventServiceTests
         {
             dto.Title,
             dto.Description,
+            TotalSeats = 100,
+            AvailableSeats = 100,
             StartAt = startAt,
             EndAt = endAt
         });
@@ -56,6 +61,8 @@ public class EventServiceTests
                 e.Id == result.Id &&
                 e.Title == dto.Title &&
                 e.Description == dto.Description &&
+                e.TotalSeats == 100 &&
+                e.AvailableSeats == 100 &&
                 e.StartAt == startAt.UtcDateTime &&
                 e.EndAt == endAt.UtcDateTime)),
             Times.Once);
@@ -65,13 +72,14 @@ public class EventServiceTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData(null)]
-    public void Create_InvalidTitle_ThrowsDomainException(string? title)
+    public void Create_InvalidTitle_ThrowsValidationException(string? title)
     {
         // Arrange
         CreateEventDto dto = new()
         {
             Title = title!,
             Description = "Invalid event",
+            TotalSeats = 100,
             StartAt = UtcDate(2026, 6, 1, 10),
             EndAt = UtcDate(2026, 6, 1, 11)
         };
@@ -81,8 +89,34 @@ public class EventServiceTests
 
         // Assert
         act.Should()
-            .Throw<DomainException>()
-            .Where(e => e.Property == nameof(Event.Title));
+            .Throw<ValidationException>()
+            .Where(e => e.Errors.ContainsKey(nameof(Event.Title)));
+
+        _repository.Verify(r => r.Add(It.IsAny<Event>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Create_InvalidTotalSeats_ThrowsValidationException(int totalSeats)
+    {
+        // Arrange
+        CreateEventDto dto = new()
+        {
+            Title = "Invalid seats",
+            Description = null,
+            TotalSeats = totalSeats,
+            StartAt = UtcDate(2026, 6, 1, 10),
+            EndAt = UtcDate(2026, 6, 1, 11)
+        };
+
+        // Act
+        Action act = () => _service.Create(dto);
+
+        // Assert
+        act.Should()
+            .Throw<ValidationException>()
+            .Where(e => e.Errors.ContainsKey(nameof(Event.TotalSeats)));
 
         _repository.Verify(r => r.Add(It.IsAny<Event>()), Times.Never);
     }
@@ -97,6 +131,7 @@ public class EventServiceTests
         {
             Title = "Invalid dates",
             Description = null,
+            TotalSeats = 100,
             StartAt = UtcDate(2026, 6, 1, startHour),
             EndAt = UtcDate(2026, 6, 1, endHour)
         };
@@ -140,6 +175,8 @@ public class EventServiceTests
             Id = id,
             dto.Title,
             dto.Description,
+            TotalSeats = existing.TotalSeats,
+            AvailableSeats = existing.AvailableSeats,
             StartAt = startAt,
             EndAt = endAt
         });
@@ -149,6 +186,8 @@ public class EventServiceTests
                 e.Id == id &&
                 e.Title == dto.Title &&
                 e.Description == dto.Description &&
+                e.TotalSeats == existing.TotalSeats &&
+                e.AvailableSeats == existing.AvailableSeats &&
                 e.StartAt == startAt.UtcDateTime &&
                 e.EndAt == endAt.UtcDateTime)),
             Times.Once);
@@ -226,6 +265,8 @@ public class EventServiceTests
             existing.Id,
             existing.Title,
             existing.Description,
+            existing.TotalSeats,
+            existing.AvailableSeats,
             StartAt = expectedStartAt,
             EndAt = expectedEndAt,
         });
@@ -448,12 +489,6 @@ public class EventServiceTests
 
         Period period = new(start, end);
 
-        return new(id, "Event title", "Event description", period);
+        return new(id, "Event title", "Event description", 100, period);
     }
-
-    private static DateTimeOffset UtcDate(int year, int month, int day, int hour) =>
-        new(year, month, day, hour, 0, 0, TimeSpan.Zero);
-
-    private static DateTime UtcDateTime(int year, int month, int day, int hour) =>
-        new(year, month, day, hour, 0, 0, DateTimeKind.Utc);
 }

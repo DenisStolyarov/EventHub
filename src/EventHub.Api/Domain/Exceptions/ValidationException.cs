@@ -1,4 +1,4 @@
-namespace EventHub.Api.Application.Exceptions;
+namespace EventHub.Api.Domain.Exceptions;
 
 public class ValidationException : Exception
 {

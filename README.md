@@ -28,40 +28,40 @@ dotnet test
 
 API versioning is supported via URL segment, `X-Api-Version` header, or `api-version` query string parameter. The default version is 1.0.
 
-| Method   | Endpoint              | Description              | Success Status | Error Status |
-|----------|-----------------------|--------------------------|----------------|--------------|
-| GET      | /api/v1/events        | Get events with filtering and pagination | 200 OK         | 400 Bad Request |
-| GET      | /api/v1/events/{id}   | Get event by id          | 200 OK         | 404 Not Found|
-| POST     | /api/v1/events        | Create a new event       | 201 Created    | 400 Bad Request |
-| POST     | /api/v1/events/{id}/book | Create a booking for an event | 202 Accepted | 404 Not Found |
-| PUT      | /api/v1/events/{id}   | Update an event          | 200 OK         | 404 Not Found / 400 Bad Request |
-| DELETE   | /api/v1/events/{id}   | Delete an event          | 204 No Content | 404 Not Found|
-| GET      | /api/v1/bookings/{id} | Get booking by id        | 200 OK         | 404 Not Found|
+| Method | Endpoint                 | Description                              | Success Status | Error Status                    |
+| ------ | ------------------------ | ---------------------------------------- | -------------- | ------------------------------- |
+| GET    | /api/v1/events           | Get events with filtering and pagination | 200 OK         | 400 Bad Request                 |
+| GET    | /api/v1/events/{id}      | Get event by id                          | 200 OK         | 404 Not Found                   |
+| POST   | /api/v1/events           | Create a new event                       | 201 Created    | 400 Bad Request                 |
+| POST   | /api/v1/events/{id}/book | Create a booking for an event            | 202 Accepted   | 404 Not Found / 409 Conflict    |
+| PUT    | /api/v1/events/{id}      | Update an event                          | 200 OK         | 404 Not Found / 400 Bad Request |
+| DELETE | /api/v1/events/{id}      | Delete an event                          | 204 No Content | 404 Not Found                   |
+| GET    | /api/v1/bookings/{id}    | Get booking by id                        | 200 OK         | 404 Not Found                   |
 
 ### Query Parameters (GET /api/v1/events)
 
-| Parameter | Type           | Required | Default | Description                            |
-|-----------|----------------|----------|---------|----------------------------------------|
-| title     | string         | No       | -       | Filter by event title (partial match)   |
-| from      | DateTimeOffset | No       | -       | Filter events starting from this date  |
-| to        | DateTimeOffset | No       | -       | Filter events ending before this date  |
+| Parameter | Type           | Required | Default | Description                           |
+| --------- | -------------- | -------- | ------- | ------------------------------------- |
+| title     | string         | No       | -       | Filter by event title (partial match) |
+| from      | DateTimeOffset | No       | -       | Filter events starting from this date |
+| to        | DateTimeOffset | No       | -       | Filter events ending before this date |
 | page      | int            | No       | 1       | Page number (>= 1)                    |
-| pageSize  | int            | No       | 10      | Items per page (1–50)                  |
+| pageSize  | int            | No       | 10      | Items per page (1–50)                 |
 
 ### Paginated Response
 
 The response is wrapped in a `PaginatedResult` object:
 
-| Field           | Type    | Description                              |
-|-----------------|---------|------------------------------------------|
-| data            | array   | Array of events on the current page      |
-| pageNumber      | int     | Current page number                      |
-| pageSize        | int     | Number of items per page                  |
-| totalPages      | int     | Total number of pages                     |
-| totalRecords    | int     | Total number of matching events          |
-| itemsOnPage     | int     | Number of items on the current page      |
-| hasNextPage     | bool    | Whether a next page exists               |
-| hasPreviousPage | bool    | Whether a previous page exists           |
+| Field           | Type  | Description                         |
+| --------------- | ----- | ----------------------------------- |
+| data            | array | Array of events on the current page |
+| pageNumber      | int   | Current page number                 |
+| pageSize        | int   | Number of items per page            |
+| totalPages      | int   | Total number of pages               |
+| totalRecords    | int   | Total number of matching events     |
+| itemsOnPage     | int   | Number of items on the current page |
+| hasNextPage     | bool  | Whether a next page exists          |
+| hasPreviousPage | bool  | Whether a previous page exists      |
 
 ### Versioning Examples
 
@@ -83,31 +83,33 @@ GET /api/v1/events?api-version=1.0
 
 ## Event Model
 
-| Field        | Type           | Required | Description                |
-|-------------|----------------|----------|----------------------------|
-| id          | Guid           | Yes      | Auto-generated identifier  |
-| title       | string         | Yes      | Event title (non-empty, trimmed) |
-| description | string         | No       | Event description |
-| startAt     | DateTimeOffset | Yes      | Event start time (UTC, ISO 8601 with Z suffix) |
-| endAt       | DateTimeOffset | Yes      | Event end time (UTC, ISO 8601 with Z suffix, must be after startAt) |
+| Field          | Type           | Required | Description                                                         |
+| -------------- | -------------- | -------- | ------------------------------------------------------------------- |
+| id             | Guid           | Yes      | Auto-generated identifier                                           |
+| title          | string         | Yes      | Event title (non-empty, trimmed)                                    |
+| description    | string         | No       | Event description                                                   |
+| totalSeats     | int            | Yes      | Total number of seats (must be > 0)                                 |
+| availableSeats | int            | Yes      | Available seats (decreases on booking, increases on cancellation)   |
+| startAt        | DateTimeOffset | Yes      | Event start time (UTC, ISO 8601 with Z suffix)                      |
+| endAt          | DateTimeOffset | Yes      | Event end time (UTC, ISO 8601 with Z suffix, must be after startAt) |
 
 ## Booking Model
 
 Booking endpoints return `BookingInfo`.
 
-| Field   | Type          | Description                  |
-|---------|---------------|------------------------------|
-| id      | Guid          | Booking identifier           |
+| Field   | Type          | Description                    |
+| ------- | ------------- | ------------------------------ |
+| id      | Guid          | Booking identifier             |
 | eventId | Guid          | Identifier of the booked event |
-| status  | BookingStatus | Current booking status       |
+| status  | BookingStatus | Current booking status         |
 
 ### Booking Status
 
-| Value     | Description                         |
-|-----------|-------------------------------------|
+| Value     | Description                               |
+| --------- | ----------------------------------------- |
 | Pending   | Booking was created and awaits processing |
-| Confirmed | Booking was confirmed              |
-| Rejected  | Booking was rejected               |
+| Confirmed | Booking was confirmed                     |
+| Rejected  | Booking was rejected                      |
 
 ### Date/Time Format
 
@@ -124,6 +126,7 @@ Using the `Z` suffix ensures that both the client and server interpret the times
 - `title` is required
 - `startAt` is required
 - `endAt` is required and must be later than `startAt`
+- `totalSeats` is required and must be greater than zero
 - `description` is optional
 
 ## Error Responses
@@ -158,6 +161,18 @@ Errors are returned as Problem Details JSON.
 }
 ```
 
+### 409 Conflict
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+  "title": "No Available Seats",
+  "status": 409,
+  "detail": "No available seats for this event.",
+  "traceId": "00-7d6f9f2e4f0b7c1c0f2e8b9d2f4a6c01-1b2c3d4e5f6a7b8c-00"
+}
+```
+
 ### 500 Internal Server Error
 
 ```json
@@ -177,10 +192,13 @@ Booking status transitions are handled by a background service that polls for pe
 ### Processing Flow
 
 1. Every 5 seconds the service polls for bookings with `Pending` status
-2. Each pending booking is processed simulating an external system call
-3. After the delay, the booking transitions from `Pending` to `Confirmed`
-4. `ProcessedAt` is recorded at the time of the status change
-5. The updated booking is persisted
+2. Pending bookings are processed in parallel
+3. Each booking is processed simulating an external system call
+4. A `SemaphoreSlim` serializes access to the storage during the critical write phase
+5. If the associated event still exists, the booking transitions from `Pending` to `Confirmed`
+6. If the event was deleted, the booking transitions to `Rejected`
+7. On unexpected failure, the booking is rejected and the reserved seat is returned to the pool
+8. `ProcessedAt` is recorded at the time of the status change
 
 ### Lifecycle
 
@@ -189,10 +207,93 @@ POST /events/{id}/book → Pending
                             ↓
                       Polling every 5s
                             ↓
-                    External system call
+                    Parallel processing (Task.WhenAll)
                             ↓
-                        Confirmed
+                    SemaphoreSlim serializes writes
+                            ↓
+              ┌──────────────┴──────────────┐
+              ↓                               ↓
+         Event exists?                   Event deleted?
+              ↓                               ↓
+         Confirmed                        Rejected
 ```
+
+## Concurrency and Synchronization
+
+The service uses three synchronization primitives to prevent race conditions:
+
+### `Lock` in BookingService
+
+`BookingService.CreateBookingAsync` uses a `Lock` to protect the atomic check-and-reserve pair — reading available seats, decrementing them, and persisting the updated event:
+
+```
+lock (_bookingLock)
+{
+    event = repository.GetById(id);       // read
+    event.TryReserveSeats();              // check + decrement
+    repository.Update(event);             // write
+}
+
+// Booking creation runs outside the lock to minimize contention
+booking = new Booking(...);
+repository.Add(booking);
+```
+
+Without this lock, two concurrent requests could both read `AvailableSeats > 0`, both pass the check, and both create a booking — exceeding the seat limit.
+
+### `SemaphoreSlim` in BookingProcessor
+
+`BookingProcessor.ProcessBookingAsync` uses a `SemaphoreSlim(1, 1)` to serialize writes to the booking and event repositories during background processing:
+
+```
+await semaphore.WaitAsync();
+try
+{
+    event = repository.GetById(booking.EventId);
+    booking.Confirm();
+    repository.Update(booking);
+}
+finally
+{
+    semaphore.Release();
+}
+```
+
+`SemaphoreSlim` is used instead of `lock` because the critical section contains `await` calls, which are not allowed inside a `lock` block.
+
+### `Lock` in Repositories
+
+Both `InMemoryEventRepository` and `InMemoryBookingRepository` use `Lock` internally to protect their in-memory lists from concurrent access.
+
+## Overbooking Scenario
+
+When all seats for an event are taken, subsequent booking attempts return `409 Conflict`:
+
+### Request
+
+```http
+POST /api/v1/events/{id}/book
+```
+
+### Response (409 Conflict)
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+  "title": "No Available Seats",
+  "status": 409,
+  "detail": "No available seats for this event.",
+  "traceId": "00-7d6f9f2e4f0b7c1c0f2e8b9d2f4a6c01-1b2c3d4e5f6a7b8c-00"
+}
+```
+
+### Example Flow
+
+1. Event is created with `totalSeats: 1`
+2. First `POST /events/{id}/book` succeeds → `202 Accepted`, `availableSeats` becomes 0
+3. Second `POST /events/{id}/book` fails → `409 Conflict` with `NoAvailableSeatsException`
+4. The background processor confirms the first booking; `availableSeats` stays 0
+5. Any further booking attempts continue to receive `409 Conflict`
 
 ## Data Storage
 

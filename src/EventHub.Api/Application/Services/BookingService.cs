@@ -8,12 +8,24 @@ namespace EventHub.Api.Application.Services;
 
 public class BookingService(IBookingRepository bookingRepository, IEventRepository eventRepository) : IBookingService
 {
+    private readonly Lock _bookingLock = new();
+
     public Task<BookingInfo> CreateBookingAsync(Guid eventId)
     {
-        Event @event = eventRepository.GetById(eventId)
-            ?? throw new NotFoundException(nameof(Event), eventId);
+        lock (_bookingLock)
+        {
+            Event @event = eventRepository.GetById(eventId)
+                ?? throw new NotFoundException(nameof(Event), eventId);
 
-        Booking booking = new(Guid.CreateVersion7(), @event.Id);
+            if (!@event.TryReserveSeats())
+            {
+                throw new NoAvailableSeatsException();
+            }
+
+            eventRepository.Update(@event);
+        }
+
+        Booking booking = new(Guid.CreateVersion7(), eventId);
 
         bookingRepository.Add(booking);
 

@@ -8,6 +8,10 @@ public sealed record EventDto
 
     public string? Description { get; init; }
 
+    public required int TotalSeats { get; init; }
+
+    public required int AvailableSeats { get; init; }
+
     public required DateTimeOffset StartAt { get; init; }
 
     public required DateTimeOffset EndAt { get; init; }
