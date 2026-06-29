@@ -224,7 +224,7 @@ The service uses three synchronization primitives to prevent race conditions:
 
 ### `Lock` in BookingService
 
-`BookingService.CreateBookingAsync` uses a `Lock` to protect the atomic check-and-decrement of `AvailableSeats`:
+`BookingService.CreateBookingAsync` uses a `Lock` to protect the atomic check-and-reserve pair — reading available seats, decrementing them, and persisting the updated event:
 
 ```
 lock (_bookingLock)
@@ -233,6 +233,10 @@ lock (_bookingLock)
     event.TryReserveSeats();              // check + decrement
     repository.Update(event);             // write
 }
+
+// Booking creation runs outside the lock to minimize contention
+booking = new Booking(...);
+repository.Add(booking);
 ```
 
 Without this lock, two concurrent requests could both read `AvailableSeats > 0`, both pass the check, and both create a booking — exceeding the seat limit.
