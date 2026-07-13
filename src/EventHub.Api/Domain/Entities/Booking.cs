@@ -14,6 +14,10 @@ public class Booking
 
     public DateTime? ProcessedAt { get; private set; }
 
+    public Event Event { get; private set; } = null!;
+
+    private Booking() { }
+
     public Booking(Guid id, Guid eventId, TimeProvider? timeProvider = null)
     {
         TimeProvider tp = timeProvider ?? TimeProvider.System;
@@ -35,7 +39,7 @@ public class Booking
     public void Reject(TimeProvider? timeProvider = null)
     {
         TimeProvider tp = timeProvider ?? TimeProvider.System;
-        
+
         Status = BookingStatus.Rejected;
         ProcessedAt = tp.GetUtcNow().UtcDateTime;
     }

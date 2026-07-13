@@ -15,13 +15,15 @@ public class Event
 
     public int AvailableSeats { get; private set; }
 
+    public List<Booking> Bookings { get; private set; } = [];
+
     public string Title
     {
         get;
         private set => field = string.IsNullOrWhiteSpace(value)
             ? throw new ValidationException(nameof(Title), "Title cannot be empty.")
             : value.Trim();
-    }
+    } = null!;
 
     public int TotalSeats
     {
@@ -30,6 +32,8 @@ public class Event
             ? throw new ValidationException(nameof(TotalSeats), "Total seats must be greater than zero.")
             : value;
     }
+
+    private Event() { }
 
     public Event(Guid id, string title, string? description, int totalSeats, Period period)
     {
