@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EventHub.Api.Infrastructure.DataAccess;
 
-internal sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Booking> Bookings { get; set; }
 

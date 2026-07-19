@@ -5,7 +5,7 @@ using EventHub.Api.Presentation;
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure();
+builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddPresentation();
 
 if (builder.Environment.IsDevelopment())

@@ -5,13 +5,13 @@ namespace EventHub.Api.Application.Interfaces;
 
 public interface IEventService
 {
-    PaginatedResult<EventDto> GetAll(GetEventsDto dto);
+    Task<PaginatedResult<EventDto>> GetAllAsync(GetEventsDto dto);
 
-    EventDto GetById(Guid id);
+    Task<EventDto> GetByIdAsync(Guid id);
 
-    EventDto Create(CreateEventDto dto);
+    Task<EventDto> CreateAsync(CreateEventDto dto);
 
-    EventDto Update(Guid id, UpdateEventDto dto);
+    Task<EventDto> UpdateAsync(Guid id, UpdateEventDto dto);
 
-    void Delete(Guid id);
+    Task DeleteAsync(Guid id);
 }

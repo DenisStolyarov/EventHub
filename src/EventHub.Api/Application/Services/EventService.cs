@@ -6,15 +6,15 @@ using EventHub.Api.Application.Exceptions;
 using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Domain.Entities;
 using EventHub.Api.Domain.Exceptions;
-using EventHub.Api.Domain.Filters;
-using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Domain.ValueObjects;
+using EventHub.Api.Infrastructure.DataAccess;
+using Microsoft.EntityFrameworkCore;
 
 namespace EventHub.Api.Application.Services;
 
-public class EventService(IEventRepository repository) : IEventService
+public sealed class EventService(AppDbContext context) : IEventService
 {
-    public PaginatedResult<EventDto> GetAll(GetEventsDto dto)
+    public async Task<PaginatedResult<EventDto>> GetAllAsync(GetEventsDto dto)
     {
         DateTime? from = dto.From?.UtcDateTime;
         DateTime? to = dto.To?.UtcDateTime;
@@ -24,17 +24,34 @@ public class EventService(IEventRepository repository) : IEventService
             throw new ValidationException(nameof(GetEventsDto.From), EventServiceErrors.FromMustBeBeforeTo);
         }
 
-        EventFilter filter = new() { Title = dto.Title, From = from, To = to };
+        IQueryable<Event> query = context.Events;
+
+        if (!string.IsNullOrWhiteSpace(dto.Title))
+        {
+            query = query.Where(e => e.Title.Contains(dto.Title));
+        }
+        if (from.HasValue)
+        {
+            query = query.Where(e => e.StartAt >= from.Value);
+        }
+        if (to.HasValue)
+        {
+            query = query.Where(e => e.EndAt <= to.Value);
+        }
 
         int pageNumber = Math.Max(1, dto.Page);
         int pageSize = Math.Clamp(dto.PageSize, 1, Pagination.MaxPageSize);
 
-        int totalRecords = repository.Count(filter);
+        int totalRecords = await query.CountAsync();
+
         int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
 
-        IEnumerable<EventDto> data = repository
-            .GetAll(filter, pageNumber, pageSize)
-            .ToDto();
+        List<Event> events = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        List<EventDto> data = [.. events.ToDto()];
 
         return new PaginatedResult<EventDto>
         {
@@ -43,47 +60,51 @@ public class EventService(IEventRepository repository) : IEventService
             PageSize = pageSize,
             TotalRecords = totalRecords,
             TotalPages = totalPages,
-            ItemsOnPage = data.Count(),
+            ItemsOnPage = data.Count,
         };
     }
 
-    public EventDto GetById(Guid id)
+    public async Task<EventDto> GetByIdAsync(Guid id)
     {
-        Event? @event = repository.GetById(id)
+        Event? @event = await context.Events.FindAsync(id)
             ?? throw new NotFoundException(nameof(Event), id);
 
         return @event.ToDto();
     }
 
-    public EventDto Create(CreateEventDto dto)
+    public async Task<EventDto> CreateAsync(CreateEventDto dto)
     {
         Period period = new(dto.StartAt.UtcDateTime, dto.EndAt.UtcDateTime);
         Event @event = new(Guid.CreateVersion7(), dto.Title, dto.Description, dto.TotalSeats, period);
 
-        repository.Add(@event);
+        context.Events.Add(@event);
+
+        await context.SaveChangesAsync();
 
         return @event.ToDto();
     }
 
-    public EventDto Update(Guid id, UpdateEventDto dto)
+    public async Task<EventDto> UpdateAsync(Guid id, UpdateEventDto dto)
     {
         Period period = new(dto.StartAt.UtcDateTime, dto.EndAt.UtcDateTime);
 
-        Event? existing = repository.GetById(id)
+        Event? existing = await context.Events.FindAsync(id)
             ?? throw new NotFoundException(nameof(Event), id);
 
         existing.Update(dto.Title, dto.Description, period);
 
-        repository.Update(existing);
+        await context.SaveChangesAsync();
 
         return existing.ToDto();
     }
 
-    public void Delete(Guid id)
+    public async Task DeleteAsync(Guid id)
     {
-        Event? existing = repository.GetById(id)
+        Event? existing = await context.Events.FindAsync(id)
             ?? throw new NotFoundException(nameof(Event), id);
 
-        repository.Delete(id);
+        context.Events.Remove(existing);
+
+        await context.SaveChangesAsync();
     }
 }
