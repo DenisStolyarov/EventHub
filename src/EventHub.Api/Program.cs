@@ -4,8 +4,8 @@ using EventHub.Api.Presentation;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddApplication();
 builder.Services.AddPresentation();
 
 if (builder.Environment.IsDevelopment())
@@ -18,6 +18,8 @@ if (builder.Environment.IsDevelopment())
 }
 
 WebApplication app = builder.Build();
+
+await app.Services.InitializeDatabaseAsync();
 
 app.UsePresentation();
 
