@@ -1,14 +1,14 @@
 using EventHub.Api.Domain.Entities;
-using EventHub.Api.Domain.Interfaces;
+using EventHub.Api.Domain.Enums;
+using EventHub.Api.Infrastructure.DataAccess;
+using Microsoft.EntityFrameworkCore;
 
 namespace EventHub.Api.Infrastructure.BackgroundServices;
 
-public sealed class BookingProcessor(IBookingRepository bookingRepository, IEventRepository eventRepository, ILogger<BookingProcessor> logger) : BackgroundService
+public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<BookingProcessor> logger) : BackgroundService
 {
-    private const int ProcessingDelaySeconds = 2;
-    private const int PollingIntervalSeconds = 5;
-
-    private readonly SemaphoreSlim _processingSemaphore = new(1, 1);
+    private const int ProcessingDelaySeconds = 30;
+    private const int PollingIntervalSeconds = 2 * 60;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -18,8 +18,19 @@ public sealed class BookingProcessor(IBookingRepository bookingRepository, IEven
         {
             try
             {
-                IEnumerable<Booking> pendingBookings = bookingRepository.GetPendingBookings();
-                IEnumerable<Task> tasks = pendingBookings.Select(booking => ProcessBookingAsync(booking, stoppingToken));
+                List<Guid> pendingBookingIds;
+
+                await using (AsyncServiceScope scope = scopeFactory.CreateAsyncScope())
+                {
+                    AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                    pendingBookingIds = await db.Bookings
+                        .Where(booking => booking.Status == BookingStatus.Pending)
+                        .Select(booking => booking.Id)
+                        .ToListAsync(stoppingToken);
+                }
+
+                IEnumerable<Task> tasks = pendingBookingIds.Select(id => ProcessBookingAsync(id, stoppingToken));
 
                 await Task.WhenAll(tasks);
             }
@@ -38,35 +49,46 @@ public sealed class BookingProcessor(IBookingRepository bookingRepository, IEven
         logger.LogInformation("Booking processor is stopped");
     }
 
-    private async Task ProcessBookingAsync(Booking booking, CancellationToken stoppingToken)
+    private async Task ProcessBookingAsync(Guid bookingId, CancellationToken stoppingToken)
     {
-        logger.LogInformation("Processing booking {id}", booking.Id);
+        logger.LogInformation("Processing booking {id}", bookingId);
+
+        await using AsyncServiceScope scope = scopeFactory.CreateAsyncScope();
+        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        Booking? booking = await db.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, stoppingToken);
+
+        if (booking is null)
+        {
+            logger.LogWarning("Booking {id} not found", bookingId);
+
+            return;
+        }
 
         await Task.Delay(TimeSpan.FromSeconds(ProcessingDelaySeconds), stoppingToken);
-
-        await _processingSemaphore.WaitAsync(stoppingToken);
 
         Event? @event = null;
 
         try
         {
-            @event = eventRepository.GetById(booking.EventId);
+            @event = await db.Events.FirstOrDefaultAsync(e => e.Id == booking.EventId, stoppingToken);
 
             if (@event is null)
             {
                 booking.Reject();
 
+                await db.SaveChangesAsync(stoppingToken);
+
                 logger.LogWarning("Event {id} not found for booking {bookingId}", booking.EventId, booking.Id);
-            }
-            else
-            {
-                booking.Confirm();
+
+                return;
             }
 
-            bookingRepository.Update(booking);
+            booking.Confirm();
+
+            await db.SaveChangesAsync(stoppingToken);
 
             logger.LogInformation("Booking {id} is processed", booking.Id);
-
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
@@ -76,30 +98,18 @@ public sealed class BookingProcessor(IBookingRepository bookingRepository, IEven
         {
             logger.LogError(ex, "Failed to process booking {id}", booking.Id);
 
-            HandleProcessingFailure(booking, @event);
-        }
-        finally
-        {
-            _processingSemaphore.Release();
-        }
-    }
-
-    private void HandleProcessingFailure(Booking booking, Event? @event)
-    {
-        try
-        {
-            if (@event is not null)
+            try
             {
-                @event.ReleaseSeats();
-                eventRepository.Update(@event);
-            }
+                booking.Reject();
 
-            booking.Reject();
-            bookingRepository.Update(booking);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to recover booking {id}", booking.Id);
+                @event?.ReleaseSeats();
+
+                await db.SaveChangesAsync(stoppingToken);
+            }
+            catch (Exception recEx)
+            {
+                logger.LogError(recEx, "Failed to recover booking {id}", booking.Id);
+            }
         }
     }
 }
