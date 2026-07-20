@@ -2,32 +2,51 @@ using EventHub.Api.Application.Constants;
 using EventHub.Api.Application.Dto;
 using EventHub.Api.Application.Dto.Events;
 using EventHub.Api.Application.Exceptions;
+using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Application.Services;
 using EventHub.Api.Domain.Entities;
 using EventHub.Api.Domain.Exceptions;
-using EventHub.Api.Domain.Filters;
-using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Domain.ValueObjects;
+using EventHub.Api.Infrastructure.DataAccess;
 using FluentAssertions;
-using Moq;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 using static EventHub.Tests.TestUtilities.TestDateTime;
 
 namespace EventHub.Tests.Services;
 
-public class EventServiceTests
+public class EventServiceTests : IDisposable
 {
-    private readonly EventService _service;
-    private readonly Mock<IEventRepository> _repository;
+    private readonly ServiceProvider _serviceProvider;
+    private readonly IServiceScope _serviceScope;
+    private readonly AppDbContext _dbContext;
+    private readonly IEventService _eventService;
 
     public EventServiceTests()
     {
-        _repository = new();
-        _service = new(_repository.Object);
+        string dbName = Guid.NewGuid().ToString();
+
+        ServiceCollection services = new();
+
+        services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(dbName));
+        services.AddScoped<IEventService, EventService>();
+
+        _serviceProvider = services.BuildServiceProvider();
+        _serviceScope = _serviceProvider.CreateScope();
+
+        _dbContext = _serviceScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        _eventService = _serviceScope.ServiceProvider.GetRequiredService<IEventService>();
+    }
+
+    public void Dispose()
+    {
+        _serviceScope.Dispose();
+        _serviceProvider.Dispose();
     }
 
     [Fact]
-    public void Create_ValidDto_AddsEventAndReturnsDto()
+    public async Task CreateAsync_ValidDto_AddsEventAndReturnsDto()
     {
         // Arrange
         DateTimeOffset startAt = UtcDate(2026, 6, 1, 10);
@@ -42,7 +61,7 @@ public class EventServiceTests
         };
 
         // Act
-        EventDto result = _service.Create(dto);
+        EventDto result = await _eventService.CreateAsync(dto);
 
         // Assert
         result.Id.Should().NotBeEmpty();
@@ -56,23 +75,21 @@ public class EventServiceTests
             EndAt = endAt
         });
 
-        _repository.Verify(
-            r => r.Add(It.Is<Event>(e =>
-                e.Id == result.Id &&
-                e.Title == dto.Title &&
-                e.Description == dto.Description &&
-                e.TotalSeats == 100 &&
-                e.AvailableSeats == 100 &&
-                e.StartAt == startAt.UtcDateTime &&
-                e.EndAt == endAt.UtcDateTime)),
-            Times.Once);
+        Event? storedEvent = await _dbContext.Events.FindAsync([result.Id], TestContext.Current.CancellationToken);
+        storedEvent.Should().NotBeNull();
+        storedEvent!.Title.Should().Be(dto.Title);
+        storedEvent.Description.Should().Be(dto.Description);
+        storedEvent.TotalSeats.Should().Be(100);
+        storedEvent.AvailableSeats.Should().Be(100);
+        storedEvent.StartAt.Should().Be(startAt.UtcDateTime);
+        storedEvent.EndAt.Should().Be(endAt.UtcDateTime);
     }
 
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData(null)]
-    public void Create_InvalidTitle_ThrowsValidationException(string? title)
+    public async Task CreateAsync_InvalidTitle_ThrowsValidationException(string? title)
     {
         // Arrange
         CreateEventDto dto = new()
@@ -85,20 +102,22 @@ public class EventServiceTests
         };
 
         // Act
-        Action act = () => _service.Create(dto);
+        Func<Task> act = () => _eventService.CreateAsync(dto);
 
         // Assert
-        act.Should()
-            .Throw<ValidationException>()
+        (await act.Should()
+            .ThrowAsync<ValidationException>())
             .Where(e => e.Errors.ContainsKey(nameof(Event.Title)));
 
-        _repository.Verify(r => r.Add(It.IsAny<Event>()), Times.Never);
+        List<Event> storedEvents = await _dbContext.Events.ToListAsync(TestContext.Current.CancellationToken);
+
+        storedEvents.Should().BeEmpty();
     }
 
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public void Create_InvalidTotalSeats_ThrowsValidationException(int totalSeats)
+    public async Task CreateAsync_InvalidTotalSeats_ThrowsValidationException(int totalSeats)
     {
         // Arrange
         CreateEventDto dto = new()
@@ -111,20 +130,22 @@ public class EventServiceTests
         };
 
         // Act
-        Action act = () => _service.Create(dto);
+        Func<Task> act = () => _eventService.CreateAsync(dto);
 
         // Assert
-        act.Should()
-            .Throw<ValidationException>()
+        (await act.Should()
+            .ThrowAsync<ValidationException>())
             .Where(e => e.Errors.ContainsKey(nameof(Event.TotalSeats)));
 
-        _repository.Verify(r => r.Add(It.IsAny<Event>()), Times.Never);
+        List<Event> storedEvents = await _dbContext.Events.ToListAsync(TestContext.Current.CancellationToken);
+
+        storedEvents.Should().BeEmpty();
     }
 
     [Theory]
     [InlineData(10, 9)]
     [InlineData(10, 10)]
-    public void Create_InvalidDateRange_ThrowsDomainException(int startHour, int endHour)
+    public async Task CreateAsync_InvalidDateRange_ThrowsDomainException(int startHour, int endHour)
     {
         // Arrange
         CreateEventDto dto = new()
@@ -137,20 +158,22 @@ public class EventServiceTests
         };
 
         // Act
-        Action act = () => _service.Create(dto);
+        Func<Task> act = () => _eventService.CreateAsync(dto);
 
         // Assert
-        act.Should()
-            .Throw<DomainException>()
+        (await act.Should()
+            .ThrowAsync<DomainException>())
             .Where(e => e.Property == nameof(Period.EndAt));
 
-        _repository.Verify(r => r.Add(It.IsAny<Event>()), Times.Never);
+        List<Event> storedEvents = await _dbContext.Events.ToListAsync(TestContext.Current.CancellationToken);
+
+        storedEvents.Should().BeEmpty();
     }
 
     [Fact]
-    public void Update_EventExists_UpdatesEventAndReturnsDto()
+    public async Task UpdateAsync_EventExists_UpdatesEventAndReturnsDto()
     {
-        // Arrange        
+        // Arrange
         DateTimeOffset startAt = UtcDate(2026, 7, 1, 12);
         DateTimeOffset endAt = UtcDate(2026, 7, 1, 15);
         UpdateEventDto dto = new()
@@ -161,18 +184,15 @@ public class EventServiceTests
             EndAt = endAt
         };
 
-        Guid id = Guid.NewGuid();
-        Event existing = CreateEvent(id);
-
-        _repository.Setup(r => r.GetById(id)).Returns(existing);
+        EventDto existing = await CreateEventAsync();
 
         // Act
-        EventDto result = _service.Update(id, dto);
+        EventDto result = await _eventService.UpdateAsync(existing.Id, dto);
 
         // Assert
         result.Should().BeEquivalentTo(new
         {
-            Id = id,
+            Id = existing.Id,
             dto.Title,
             dto.Description,
             TotalSeats = existing.TotalSeats,
@@ -181,20 +201,16 @@ public class EventServiceTests
             EndAt = endAt
         });
 
-        _repository.Verify(
-            r => r.Update(It.Is<Event>(e =>
-                e.Id == id &&
-                e.Title == dto.Title &&
-                e.Description == dto.Description &&
-                e.TotalSeats == existing.TotalSeats &&
-                e.AvailableSeats == existing.AvailableSeats &&
-                e.StartAt == startAt.UtcDateTime &&
-                e.EndAt == endAt.UtcDateTime)),
-            Times.Once);
+        Event? storedEvent = await _dbContext.Events.FindAsync([existing.Id], TestContext.Current.CancellationToken);
+        storedEvent.Should().NotBeNull();
+        storedEvent!.Title.Should().Be(dto.Title);
+        storedEvent.Description.Should().Be(dto.Description);
+        storedEvent.StartAt.Should().Be(startAt.UtcDateTime);
+        storedEvent.EndAt.Should().Be(endAt.UtcDateTime);
     }
 
     [Fact]
-    public void Update_EventDoesNotExist_ThrowsNotFoundException()
+    public async Task UpdateAsync_EventDoesNotExist_ThrowsNotFoundException()
     {
         // Arrange
         UpdateEventDto dto = new()
@@ -207,24 +223,20 @@ public class EventServiceTests
 
         Guid id = Guid.NewGuid();
 
-        _repository.Setup(r => r.GetById(id)).Returns((Event?)null);
-
         // Act
-        Action act = () => _service.Update(id, dto);
+        Func<Task> act = () => _eventService.UpdateAsync(id, dto);
 
         // Assert
-        act.Should().Throw<NotFoundException>();
-
-        _repository.Verify(r => r.Update(It.IsAny<Event>()), Times.Never);
+        await act.Should().ThrowAsync<NotFoundException>();
     }
 
     [Theory]
     [InlineData(10, 9)]
     [InlineData(10, 10)]
-    public void Update_InvalidDateRange_ThrowsDomainException(int startHour, int endHour)
+    public async Task UpdateAsync_InvalidDateRange_ThrowsDomainException(int startHour, int endHour)
     {
-        // Arrange  
-        Guid id = Guid.NewGuid();
+        // Arrange
+        EventDto existing = await CreateEventAsync();
         UpdateEventDto dto = new()
         {
             Title = "Invalid dates",
@@ -234,30 +246,27 @@ public class EventServiceTests
         };
 
         // Act
-        Action act = () => _service.Update(id, dto);
+        Func<Task> act = () => _eventService.UpdateAsync(existing.Id, dto);
 
         // Assert
-        act.Should()
-            .Throw<DomainException>()
+        (await act.Should()
+            .ThrowAsync<DomainException>())
             .Where(e => e.Property == nameof(Period.EndAt));
 
-        _repository.Verify(r => r.Update(It.IsAny<Event>()), Times.Never);
+        Event? storedEvent = await _dbContext.Events.FindAsync([existing.Id], TestContext.Current.CancellationToken);
+
+        storedEvent.Should().NotBeNull();
+        storedEvent.Title.Should().Be(existing.Title);
     }
 
     [Fact]
-    public void GetById_EventExists_ReturnsEvent()
+    public async Task GetByIdAsync_EventExists_ReturnsEvent()
     {
         // Arrange
-        Guid id = Guid.NewGuid();
-        Event existing = CreateEvent(id, UtcDateTime(2026, 6, 3, 10), UtcDateTime(2026, 6, 3, 11));
-
-        DateTimeOffset expectedStartAt = new(existing.StartAt, TimeSpan.Zero);
-        DateTimeOffset expectedEndAt = new(existing.EndAt, TimeSpan.Zero);
-
-        _repository.Setup(r => r.GetById(id)).Returns(existing);
+        EventDto existing = await CreateEventAsync(startAt: UtcDate(2026, 6, 3, 10), endAt: UtcDate(2026, 6, 3, 11));
 
         // Act
-        EventDto result = _service.GetById(id);
+        EventDto result = await _eventService.GetByIdAsync(existing.Id);
 
         // Assert
         result.Should().BeEquivalentTo(new
@@ -267,42 +276,42 @@ public class EventServiceTests
             existing.Description,
             existing.TotalSeats,
             existing.AvailableSeats,
-            StartAt = expectedStartAt,
-            EndAt = expectedEndAt,
+            existing.StartAt,
+            existing.EndAt,
         });
     }
 
     [Fact]
-    public void GetById_EventDoesNotExist_ThrowsNotFoundException()
+    public async Task GetByIdAsync_EventDoesNotExist_ThrowsNotFoundException()
     {
         // Arrange
         Guid id = Guid.NewGuid();
 
-        _repository.Setup(r => r.GetById(id)).Returns((Event?)null);
-
         // Act
-        Action act = () => _service.GetById(id);
+        Func<Task> act = () => _eventService.GetByIdAsync(id);
 
         // Assert
-        act.Should()
-            .Throw<NotFoundException>()
+        await act.Should()
+            .ThrowAsync<NotFoundException>()
             .Where(e => e.EntityId.Equals(id) && e.EntityName == nameof(Event));
     }
 
     [Fact]
-    public void GetAll_EventsExist_ReturnsDataAndPaginationMetadata()
+    public async Task GetAllAsync_EventsExist_ReturnsDataAndPaginationMetadata()
     {
         // Arrange
-        Event first = CreateEvent(Guid.NewGuid());
-        Event second = CreateEvent(Guid.NewGuid());
+        await CreateEventAsync(title: "First event");
+        await CreateEventAsync(title: "Second event");
 
-        _repository.Setup(r => r.Count(It.IsAny<EventFilter>())).Returns(5);
-        _repository.Setup(r => r.GetAll(It.IsAny<EventFilter>(), 2, 2)).Returns([first, second]);
+        EventDto third = await CreateEventAsync(title: "Third event");
+        EventDto fourth = await CreateEventAsync(title: "Fourth event");
+
+        await CreateEventAsync(title: "Fifth event");
 
         GetEventsDto dto = new() { Page = 2, PageSize = 2 };
 
         // Act
-        PaginatedResult<EventDto> result = _service.GetAll(dto);
+        PaginatedResult<EventDto> result = await _eventService.GetAllAsync(dto);
 
         // Assert
         result.Should().BeEquivalentTo(new
@@ -316,52 +325,58 @@ public class EventServiceTests
 
         result.Data.Select(e => e.Id)
             .Should()
-            .Equal(first.Id, second.Id);
+            .Equal(third.Id, fourth.Id);
     }
 
     [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData(null)]
-    [InlineData("meetup")]
-    public void GetAll_TitleFilterProvided_PassesTitleFilterToRepository(string? title)
+    [InlineData("Meetup")]
+    public async Task GetAllAsync_TitleFilterProvided_FindsEvents(string? title)
     {
         // Arrange
-        SetupEmptyGetAll();
+        EventDto meetup = await CreateEventAsync(title: "Community Meetup");
+
+        await CreateEventAsync(title: "Architecture Workshop");
+
+        GetEventsDto dto = new() { Title = title };
 
         // Act
-        _service.GetAll(new GetEventsDto { Title = title });
+        PaginatedResult<EventDto> result = await _eventService.GetAllAsync(dto);
 
         // Assert
-        _repository.Verify(r => r.Count(It.Is<EventFilter>(f => f.Title == title)), Times.Once);
-        _repository.Verify(r => r.GetAll(It.Is<EventFilter>(f => f.Title == title), 1, 10), Times.Once);
+        result.TotalRecords.Should().Be(1);
+        result.Data.Single().Id.Should().Be(meetup.Id);
     }
 
     [Fact]
-    public void GetAll_DateFiltersProvided_PassesUtcDateFiltersToRepository()
+    public async Task GetAllAsync_DateFiltersProvided_ReturnsEventsWithinDateRange()
     {
         // Arrange
-        SetupEmptyGetAll();
+        EventDto early = await CreateEventAsync(
+            title: "Early event",
+            startAt: UtcDate(2026, 6, 1, 10),
+            endAt: UtcDate(2026, 6, 1, 12));
 
-        DateTimeOffset from = new(2026, 6, 1, 10, 0, 0, TimeSpan.FromHours(3));
-        DateTimeOffset to = new(2026, 6, 10, 18, 0, 0, TimeSpan.FromHours(3));
+        await CreateEventAsync(
+            title: "Late event",
+            startAt: UtcDate(2026, 6, 15, 10),
+            endAt: UtcDate(2026, 6, 15, 12));
 
-        GetEventsDto dto = new() { From = from, To = to };
+        GetEventsDto dto = new()
+        {
+            From = UtcDate(2026, 6, 1, 0),
+            To = UtcDate(2026, 6, 10, 23)
+        };
 
         // Act
-        _service.GetAll(dto);
+        PaginatedResult<EventDto> result = await _eventService.GetAllAsync(dto);
 
         // Assert
-        _repository.Verify(
-            r => r.GetAll(
-                It.Is<EventFilter>(f => f.From == from.UtcDateTime && f.To == to.UtcDateTime),
-                1,
-                10),
-            Times.Once);
+        result.TotalRecords.Should().Be(1);
+        result.Data.Single().Id.Should().Be(early.Id);
     }
 
     [Fact]
-    public void GetAll_FromAfterTo_ThrowsValidationException()
+    public async Task GetAllAsync_FromAfterTo_ThrowsValidationException()
     {
         // Arrange
         GetEventsDto dto = new()
@@ -371,15 +386,12 @@ public class EventServiceTests
         };
 
         // Act
-        Action act = () => _service.GetAll(dto);
+        Func<Task> act = () => _eventService.GetAllAsync(dto);
 
         // Assert
-        act.Should()
-            .Throw<ValidationException>()
+        (await act.Should()
+            .ThrowAsync<ValidationException>())
             .Where(e => e.Errors.ContainsKey(nameof(GetEventsDto.From)));
-
-        _repository.Verify(r => r.Count(It.IsAny<EventFilter>()), Times.Never);
-        _repository.Verify(r => r.GetAll(It.IsAny<EventFilter>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
     [Theory]
@@ -388,107 +400,108 @@ public class EventServiceTests
     [InlineData(2, 0, 2, 1)]
     [InlineData(2, -10, 2, 1)]
     [InlineData(1, Pagination.MaxPageSize + 1, 1, Pagination.MaxPageSize)]
-    public void GetAll_PaginationValuesProvided_NormalizesPagination(
+    public async Task GetAllAsync_PaginationValuesProvided_NormalizesPagination(
         int page,
         int pageSize,
         int expectedPage,
         int expectedPageSize)
     {
         // Arrange
-        SetupEmptyGetAll();
+        await CreateEventAsync(title: "Event 1");
+        await CreateEventAsync(title: "Event 2");
 
         GetEventsDto dto = new() { Page = page, PageSize = pageSize };
 
         // Act
-        PaginatedResult<EventDto> result = _service.GetAll(dto);
+        PaginatedResult<EventDto> result = await _eventService.GetAllAsync(dto);
 
         // Assert
         result.PageNumber.Should().Be(expectedPage);
         result.PageSize.Should().Be(expectedPageSize);
-
-        _repository.Verify(r => r.Count(It.IsAny<EventFilter>()), Times.Once);
-        _repository.Verify(r => r.GetAll(It.IsAny<EventFilter>(), expectedPage, expectedPageSize), Times.Once);
     }
 
     [Fact]
-    public void GetAll_CombinedFilterProvided_PassesAllFiltersAndPaginationToRepository()
+    public async Task GetAllAsync_CombinedFilterProvided_ReturnsMatchingEvents()
     {
         // Arrange
-        SetupEmptyGetAll();
+        await CreateEventAsync(
+            title: "Other conference",
+            startAt: UtcDate(2026, 8, 1, 9),
+            endAt: UtcDate(2026, 8, 1, 18));
 
-        DateTimeOffset from = UtcDate(2026, 8, 1, 9);
-        DateTimeOffset to = UtcDate(2026, 8, 31, 18);
+        EventDto target = await CreateEventAsync(
+            title: "Target conference",
+            startAt: UtcDate(2026, 8, 10, 9),
+            endAt: UtcDate(2026, 8, 10, 18));
+
+        await CreateEventAsync(
+            title: "Another workshop",
+            startAt: UtcDate(2026, 8, 10, 9),
+            endAt: UtcDate(2026, 8, 10, 18));
 
         // Act
-        _service.GetAll(new GetEventsDto
+        PaginatedResult<EventDto> result = await _eventService.GetAllAsync(new GetEventsDto
         {
-            Title = "conference",
-            From = from,
-            To = to,
-            Page = 3,
-            PageSize = 4
+            Title = "Target",
+            From = UtcDate(2026, 8, 1, 0),
+            To = UtcDate(2026, 8, 31, 23),
+            Page = 1,
+            PageSize = 10
         });
 
         // Assert
-        _repository.Verify(
-            r => r.GetAll(
-                It.Is<EventFilter>(f =>
-                    f.Title == "conference" &&
-                    f.From == from.UtcDateTime &&
-                    f.To == to.UtcDateTime),
-                3,
-                4),
-            Times.Once);
+        result.TotalRecords.Should().Be(1);
+        result.Data.Single().Id.Should().Be(target.Id);
     }
 
     [Fact]
-    public void Delete_EventExists_DeletesEvent()
+    public async Task DeleteAsync_EventExists_DeletesEvent()
     {
         // Arrange
-        Guid id = Guid.NewGuid();
-        Event existing = CreateEvent(id);
-
-        _repository.Setup(r => r.GetById(id)).Returns(existing);
+        EventDto existing = await CreateEventAsync();
 
         // Act
-        _service.Delete(id);
+        await _eventService.DeleteAsync(existing.Id);
 
         // Assert
-        _repository.Verify(r => r.Delete(id), Times.Once);
+        Event? storedEvent = await _dbContext.Events.FindAsync([existing.Id], TestContext.Current.CancellationToken);
+
+        storedEvent.Should().BeNull();
     }
 
     [Fact]
-    public void Delete_EventDoesNotExist_ThrowsNotFoundException()
+    public async Task DeleteAsync_EventDoesNotExist_ThrowsNotFoundException()
     {
         // Arrange
         Guid id = Guid.NewGuid();
 
-        _repository.Setup(r => r.GetById(id)).Returns((Event?)null);
-
         // Act
-        Action act = () => _service.Delete(id);
+        Func<Task> act = () => _eventService.DeleteAsync(id);
 
         // Assert
-        act.Should()
-            .Throw<NotFoundException>()
+        await act.Should()
+            .ThrowAsync<NotFoundException>()
             .Where(e => e.EntityId.Equals(id) && e.EntityName == nameof(Event));
-
-        _repository.Verify(r => r.Delete(It.IsAny<Guid>()), Times.Never);
     }
 
-    private void SetupEmptyGetAll()
+    private async Task<EventDto> CreateEventAsync(
+        string? title = null,
+        int totalSeats = 100,
+        DateTimeOffset? startAt = null,
+        DateTimeOffset? endAt = null)
     {
-        _repository.Setup(r => r.Count(It.IsAny<EventFilter>())).Returns(0);
-        _repository.Setup(r => r.GetAll(It.IsAny<EventFilter>(), It.IsAny<int>(), It.IsAny<int>())).Returns([]);
-    }
+        DateTimeOffset start = startAt ?? UtcDate(2026, 6, 1, 10);
+        DateTimeOffset end = endAt ?? UtcDate(2026, 6, 1, 12);
 
-    private static Event CreateEvent(Guid id, DateTime? startAt = null, DateTime? endAt = null)
-    {
-        DateTime start = startAt ?? DateTime.MinValue;
-        DateTime end = endAt ?? DateTime.MaxValue;
+        CreateEventDto dto = new()
+        {
+            Title = title ?? "Event title",
+            Description = "Event description",
+            TotalSeats = totalSeats,
+            StartAt = start,
+            EndAt = end
+        };
 
-        Period period = new(start, end);
-
-        return new(id, "Event title", "Event description", 100, period);
+        return await _eventService.CreateAsync(dto);
     }
 }
