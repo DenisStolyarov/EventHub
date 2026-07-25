@@ -7,8 +7,8 @@ namespace EventHub.Api.Infrastructure.BackgroundServices;
 
 public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<BookingProcessor> logger) : BackgroundService
 {
-    private const int ProcessingDelaySeconds = 30;
-    private const int PollingIntervalSeconds = 2 * 60;
+    private readonly TimeSpan PollingInterval = TimeSpan.FromSeconds(5);
+    private readonly TimeSpan ProcessingDelay = TimeSpan.FromSeconds(2);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -43,7 +43,7 @@ public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<
                 logger.LogError(ex, "Unhandled exception: {Message}", ex.Message);
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(PollingIntervalSeconds), stoppingToken);
+            await Task.Delay(PollingInterval, stoppingToken);
         }
 
         logger.LogInformation("Booking processor is stopped");
@@ -53,25 +53,30 @@ public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<
     {
         logger.LogInformation("Processing booking {id}", bookingId);
 
-        await using AsyncServiceScope scope = scopeFactory.CreateAsyncScope();
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-        Booking? booking = await db.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, stoppingToken);
-
-        if (booking is null)
-        {
-            logger.LogWarning("Booking {id} not found", bookingId);
-
-            return;
-        }
-
-        await Task.Delay(TimeSpan.FromSeconds(ProcessingDelaySeconds), stoppingToken);
-
-        Event? @event = null;
-
         try
         {
-            @event = await db.Events.FirstOrDefaultAsync(e => e.Id == booking.EventId, stoppingToken);
+            await Task.Delay(ProcessingDelay, stoppingToken);
+
+            await using AsyncServiceScope scope = scopeFactory.CreateAsyncScope();
+            AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            Booking? booking = await db.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, stoppingToken);
+
+            if (booking is null)
+            {
+                logger.LogWarning("Booking {id} not found", bookingId);
+
+                return;
+            }
+
+            if (booking.Status is not BookingStatus.Pending)
+            {
+                logger.LogWarning("Booking {id} is not pending", bookingId);
+
+                return;
+            }
+
+            Event? @event = await db.Events.FirstOrDefaultAsync(e => e.Id == booking.EventId, stoppingToken);
 
             if (@event is null)
             {
@@ -96,19 +101,29 @@ public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to process booking {id}", booking.Id);
-
             try
             {
-                booking.Reject();
+                await using AsyncServiceScope scope = scopeFactory.CreateAsyncScope();
+                AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-                @event?.ReleaseSeats();
+                Booking? booking = await db.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, stoppingToken);
 
-                await db.SaveChangesAsync(stoppingToken);
+                if (booking is not null)
+                {
+                    booking.Reject();
+
+                    Event? @event = await db.Events.FirstOrDefaultAsync(e => e.Id == booking.EventId, stoppingToken);
+
+                    @event?.ReleaseSeats();
+
+                    await db.SaveChangesAsync(stoppingToken);
+                }
+
+                logger.LogError(ex, "Booking {Id} rejected due to processing error", bookingId);
             }
             catch (Exception recEx)
             {
-                logger.LogError(recEx, "Failed to recover booking {id}", booking.Id);
+                logger.LogError(recEx, "Failed to reject booking {Id}", bookingId);
             }
         }
     }
