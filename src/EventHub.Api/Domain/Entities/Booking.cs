@@ -1,4 +1,5 @@
 using EventHub.Api.Domain.Enums;
+using EventHub.Api.Domain.Exceptions;
 
 namespace EventHub.Api.Domain.Entities;
 
@@ -20,6 +21,11 @@ public class Booking
 
     public Booking(Guid id, Guid eventId, TimeProvider? timeProvider = null)
     {
+        if (eventId == Guid.Empty)
+        {
+            throw new ValidationException(nameof(EventId), "EventId cannot be empty.");
+        }
+
         TimeProvider tp = timeProvider ?? TimeProvider.System;
 
         Id = id;
