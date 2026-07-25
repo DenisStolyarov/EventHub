@@ -2,19 +2,21 @@ using EventHub.Api.Application.Dto.Bookings;
 using EventHub.Api.Application.Exceptions;
 using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Domain.Entities;
-using EventHub.Api.Domain.Interfaces;
+using EventHub.Api.Infrastructure.DataAccess;
 
 namespace EventHub.Api.Application.Services;
 
-public class BookingService(IBookingRepository bookingRepository, IEventRepository eventRepository) : IBookingService
+public sealed class BookingService(AppDbContext context) : IBookingService
 {
-    private readonly Lock _bookingLock = new();
+    private static readonly SemaphoreSlim _semaphore = new(1, 1);
 
-    public Task<BookingInfo> CreateBookingAsync(Guid eventId)
+    public async Task<BookingInfo> CreateBookingAsync(Guid eventId)
     {
-        lock (_bookingLock)
+        await _semaphore.WaitAsync();
+
+        try
         {
-            Event @event = eventRepository.GetById(eventId)
+            Event @event = await context.Events.FindAsync(eventId)
                 ?? throw new NotFoundException(nameof(Event), eventId);
 
             if (!@event.TryReserveSeats())
@@ -22,21 +24,25 @@ public class BookingService(IBookingRepository bookingRepository, IEventReposito
                 throw new NoAvailableSeatsException();
             }
 
-            eventRepository.Update(@event);
+            Booking booking = new(Guid.CreateVersion7(), eventId);
+
+            context.Bookings.Add(booking);
+
+            await context.SaveChangesAsync();
+
+            return booking.ToInfo();
         }
-
-        Booking booking = new(Guid.CreateVersion7(), eventId);
-
-        bookingRepository.Add(booking);
-
-        return Task.FromResult(booking.ToInfo());
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 
-    public Task<BookingInfo> GetBookingByIdAsync(Guid bookingId)
+    public async Task<BookingInfo> GetBookingByIdAsync(Guid bookingId)
     {
-        Booking booking = bookingRepository.GetById(bookingId)
+        Booking booking = await context.Bookings.FindAsync(bookingId)
             ?? throw new NotFoundException(nameof(Booking), bookingId);
 
-        return Task.FromResult(booking.ToInfo());
+        return booking.ToInfo();
     }
 }

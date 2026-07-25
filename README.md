@@ -5,18 +5,57 @@ REST API service for managing events, built on ASP.NET Core Web API.
 ## Requirements
 
 - .NET 10 SDK or later
+- PostgreSQL 14+
+
+## Database Setup
+
+The application stores events and bookings in PostgreSQL. The easiest way to start a local database is with Docker Compose:
+
+```bash
+docker compose up -d
+```
+
+The included `docker-compose.yml` runs `postgres:16-alpine` on port `5432` with:
+
+- Database: `eventapi`
+- Username: `postgres`
+- Password: `postgres`
+
+To stop the database:
+
+```bash
+docker compose down
+```
+
+## Configuration
+
+Set the connection string in `appsettings.json`:
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=eventapi;Username=postgres;Password=postgres"
+  }
+}
+```
+
+You can also configure the connection string via environment variables or .NET user secrets.
 
 ## Build and Run
 
 ```bash
+docker compose up -d
 dotnet build
-
 dotnet run --project src/EventHub.Api
 ```
+
+The database schema is created automatically on startup using `EnsureCreatedAsync`. No manual migrations are required for local development.
 
 After launch, Swagger UI is available at: [http://localhost:5000/swagger](http://localhost:5000/swagger).
 
 ## Testing
+
+Unit and integration tests use the EF Core InMemory provider. Each test class gets its own isolated in-memory database via `ServiceCollection` and `AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(dbName))`.
 
 Run all tests from the repository root:
 
@@ -191,25 +230,24 @@ Booking status transitions are handled by a background service that polls for pe
 
 ### Processing Flow
 
-1. Every 5 seconds the service polls for bookings with `Pending` status
+1. Every 2 minutes the service polls for bookings with `Pending` status
 2. Pending bookings are processed in parallel
-3. Each booking is processed simulating an external system call
-4. A `SemaphoreSlim` serializes access to the storage during the critical write phase
-5. If the associated event still exists, the booking transitions from `Pending` to `Confirmed`
-6. If the event was deleted, the booking transitions to `Rejected`
-7. On unexpected failure, the booking is rejected and the reserved seat is returned to the pool
-8. `ProcessedAt` is recorded at the time of the status change
+3. Each booking is processed simulating an external system call (30-second delay)
+4. If the associated event still exists, the booking transitions from `Pending` to `Confirmed`
+5. If the event was deleted, the booking transitions to `Rejected`
+6. On unexpected failure, the booking is rejected and the reserved seat is returned to the pool
+7. `ProcessedAt` is recorded at the time of the status change
 
 ### Lifecycle
 
 ```
 POST /events/{id}/book → Pending
                             ↓
-                      Polling every 5s
+                   Polling every 2 minutes
                             ↓
-                    Parallel processing (Task.WhenAll)
+                Parallel processing (Task.WhenAll)
                             ↓
-                    SemaphoreSlim serializes writes
+            External service call (30 s delay)
                             ↓
               ┌──────────────┴──────────────┐
               ↓                               ↓
@@ -220,50 +258,39 @@ POST /events/{id}/book → Pending
 
 ## Concurrency and Synchronization
 
-The service uses three synchronization primitives to prevent race conditions:
+The service uses the following mechanisms to prevent race conditions:
 
-### `Lock` in BookingService
+### `SemaphoreSlim` in BookingService
 
-`BookingService.CreateBookingAsync` uses a `Lock` to protect the atomic check-and-reserve pair — reading available seats, decrementing them, and persisting the updated event:
-
-```
-lock (_bookingLock)
-{
-    event = repository.GetById(id);       // read
-    event.TryReserveSeats();              // check + decrement
-    repository.Update(event);             // write
-}
-
-// Booking creation runs outside the lock to minimize contention
-booking = new Booking(...);
-repository.Add(booking);
-```
-
-Without this lock, two concurrent requests could both read `AvailableSeats > 0`, both pass the check, and both create a booking — exceeding the seat limit.
-
-### `SemaphoreSlim` in BookingProcessor
-
-`BookingProcessor.ProcessBookingAsync` uses a `SemaphoreSlim(1, 1)` to serialize writes to the booking and event repositories during background processing:
+`BookingService.CreateBookingAsync` uses a `SemaphoreSlim(1, 1)` to protect the atomic check-and-reserve sequence when working with EF Core. The critical section reads the event, decrements `AvailableSeats`, and persists both the updated event and the new booking in a single `SaveChangesAsync`:
 
 ```
-await semaphore.WaitAsync();
+await _semaphore.WaitAsync();
 try
 {
-    event = repository.GetById(booking.EventId);
-    booking.Confirm();
-    repository.Update(booking);
+    event = await context.Events.FindAsync(id);  // read
+    event.TryReserveSeats();                     // check + decrement
+    context.Bookings.Add(new Booking(...));      // create booking
+    await context.SaveChangesAsync();            // atomic write
 }
 finally
 {
-    semaphore.Release();
+    _semaphore.Release();
 }
 ```
 
-`SemaphoreSlim` is used instead of `lock` because the critical section contains `await` calls, which are not allowed inside a `lock` block.
+Without this synchronization, two concurrent requests could both read `AvailableSeats > 0`, both pass the check, and both create a booking — exceeding the seat limit.
 
-### `Lock` in Repositories
+### Scoped DbContext in BookingProcessor
 
-Both `InMemoryEventRepository` and `InMemoryBookingRepository` use `Lock` internally to protect their in-memory lists from concurrent access.
+`BookingProcessor` runs in the background and processes pending bookings in parallel. Each processing task creates a new `IServiceScope` via `IServiceScopeFactory.CreateAsyncScope()` and resolves its own `AppDbContext`. This is required because `DbContext` is not thread-safe and must not be shared across parallel operations.
+
+```
+await using var scope = scopeFactory.CreateAsyncScope();
+var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+var booking = await db.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId);
+```
 
 ## Overbooking Scenario
 
@@ -297,6 +324,8 @@ POST /api/v1/events/{id}/book
 
 ## Data Storage
 
-Event and booking data is stored in application memory. All data is lost when the application restarts.
+Event and booking data is stored in PostgreSQL and accessed through Entity Framework Core (`AppDbContext`).
 
-Filtering and pagination are implemented in the repository layer because they are data-query concerns. EventService validates input, normalizes pagination parameters, creates filter, and maps results to DTOs. This keeps the service independent from storage details and allows future database-backed repositories to execute filters and pagination efficiently at the storage level.
+Filtering, pagination, and counting are implemented with `IQueryable` and executed by EF Core. `EventService` validates input, normalizes pagination parameters, builds the query, and maps results to DTOs. This keeps the service independent from storage details and allows efficient query execution at the database level.
+
+Tests use the EF Core InMemory provider instead of PostgreSQL so they can run without an external database and remain isolated from each other.

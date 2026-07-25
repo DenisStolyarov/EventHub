@@ -2,9 +2,9 @@ namespace EventHub.Api.Domain.Enums;
 
 public enum BookingStatus
 {
-    Pending,
+    Pending = 0,
 
-    Confirmed,
+    Confirmed = 1,
 
-    Rejected,
+    Rejected = 2,
 }

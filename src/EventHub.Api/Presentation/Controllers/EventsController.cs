@@ -17,19 +17,21 @@ public class EventsController(IEventService eventService, IBookingService bookin
     [HttpGet]
     [ProducesResponseType(typeof(PaginatedResult<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public ActionResult<PaginatedResult<EventDto>> GetAll([FromQuery] GetEventsRequest request)
+    public async Task<ActionResult<PaginatedResult<EventDto>>> GetAll([FromQuery] GetEventsRequest request)
     {
         GetEventsDto dto = request.ToDto();
 
-        return Ok(eventService.GetAll(dto));
+        PaginatedResult<EventDto> page = await eventService.GetAllAsync(dto);
+
+        return Ok(page);
     }
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public ActionResult<EventDto> GetById(Guid id)
+    public async Task<ActionResult<EventDto>> GetById(Guid id)
     {
-        EventDto @event = eventService.GetById(id);
+        EventDto @event = await eventService.GetByIdAsync(id);
 
         return Ok(@event);
     }
@@ -38,11 +40,11 @@ public class EventsController(IEventService eventService, IBookingService bookin
     [ProducesResponseType(typeof(EventDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    public ActionResult<EventDto> Create(CreateEventRequest request)
+    public async Task<ActionResult<EventDto>> Create(CreateEventRequest request)
     {
         CreateEventDto dto = request.ToDto();
 
-        EventDto created = eventService.Create(dto);
+        EventDto created = await eventService.CreateAsync(dto);
 
         return CreatedAtAction(nameof(GetById), new { id = created.Id, version = "1.0" }, created);
     }
@@ -52,11 +54,11 @@ public class EventsController(IEventService eventService, IBookingService bookin
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    public ActionResult<EventDto> Update(Guid id, UpdateEventRequest request)
+    public async Task<ActionResult<EventDto>> Update(Guid id, UpdateEventRequest request)
     {
         UpdateEventDto dto = request.ToDto();
 
-        EventDto updated = eventService.Update(id, dto);
+        EventDto updated = await eventService.UpdateAsync(id, dto);
 
         return Ok(updated);
     }
@@ -64,9 +66,9 @@ public class EventsController(IEventService eventService, IBookingService bookin
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public IActionResult Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id)
     {
-        eventService.Delete(id);
+        await eventService.DeleteAsync(id);
 
         return NoContent();
     }
