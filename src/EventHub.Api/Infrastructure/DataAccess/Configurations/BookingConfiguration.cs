@@ -12,22 +12,31 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
 
         builder.HasKey(b => b.Id);
 
-        builder
-            .Property(b => b.Id)
+        builder.Property(b => b.Id)
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
-        builder
-            .Property(b => b.CreatedAt)
+        builder.Property(b => b.EventId)
+            .HasColumnName("event_id")
             .IsRequired();
 
-        builder
-            .Property(b => b.Status)
+        builder.Property(b => b.Status)
+            .HasColumnName("status")
             .IsRequired()
-            .HasConversion<string>();
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        builder.Property(b => b.CreatedAt)
+            .HasColumnName("created_at")
+            .IsRequired();
+
+        builder.Property(b => b.ProcessedAt)
+            .HasColumnName("processed_at");
 
         builder
             .HasOne(b => b.Event)
             .WithMany(e => e.Bookings)
-            .HasForeignKey(b => b.EventId);
+            .HasForeignKey(b => b.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

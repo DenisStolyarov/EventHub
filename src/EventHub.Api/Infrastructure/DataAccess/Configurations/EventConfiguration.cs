@@ -12,38 +12,39 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>
 
         builder.HasKey(e => e.Id);
 
-        builder
-            .Property(e => e.Id)
+        builder.Property(e => e.Id)
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
-        builder
-            .Property(e => e.Title)
+        builder.Property(e => e.Title)
+            .HasColumnName("title")
             .IsRequired()
-            .HasMaxLength(250);
+            .HasMaxLength(200);
 
-        builder
-            .Property(e => e.Description)
+        builder.Property(e => e.Description)
+            .HasColumnName("description")
             .HasMaxLength(2000);
 
-        builder
-            .Property(e => e.AvailableSeats)
+        builder.Property(e => e.AvailableSeats)
+            .HasColumnName("available_seats")
             .IsRequired();
 
-        builder
-            .Property(e => e.TotalSeats)
+        builder.Property(e => e.TotalSeats)
+            .HasColumnName("total_seats")
             .IsRequired();
 
-        builder
-            .Property(e => e.StartAt)
+        builder.Property(e => e.StartAt)            
+            .HasColumnName("start_at")
             .IsRequired();
 
-        builder
-            .Property(e => e.EndAt)
+        builder.Property(e => e.EndAt)
+            .HasColumnName("end_at")
             .IsRequired();
 
         builder
             .HasMany(e => e.Bookings)
             .WithOne(b => b.Event)
-            .HasForeignKey(b => b.EventId);
+            .HasForeignKey(b => b.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
