@@ -7,4 +7,8 @@ public sealed record EventFilter
     public DateTime? From { get; init; }
 
     public DateTime? To { get; init; }
+
+    public int Page { get; init; }
+
+    public int PageSize { get; init; }
 }

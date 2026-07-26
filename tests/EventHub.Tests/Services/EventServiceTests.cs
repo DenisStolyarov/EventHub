@@ -6,8 +6,10 @@ using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Application.Services;
 using EventHub.Api.Domain.Entities;
 using EventHub.Api.Domain.Exceptions;
+using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Domain.ValueObjects;
 using EventHub.Api.Infrastructure.DataAccess;
+using EventHub.Api.Infrastructure.Repositories;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +32,7 @@ public class EventServiceTests : IDisposable
         ServiceCollection services = new();
 
         services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(dbName));
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IEventService, EventService>();
 
         _serviceProvider = services.BuildServiceProvider();

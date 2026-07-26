@@ -5,7 +5,9 @@ using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Application.Services;
 using EventHub.Api.Domain.Entities;
 using EventHub.Api.Domain.Enums;
+using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Infrastructure.DataAccess;
+using EventHub.Api.Infrastructure.Repositories;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +31,7 @@ public class BookingServiceTests : IDisposable
         ServiceCollection services = new();
 
         services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(dbName));
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IBookingService, BookingService>();
         services.AddScoped<IEventService, EventService>();
 
