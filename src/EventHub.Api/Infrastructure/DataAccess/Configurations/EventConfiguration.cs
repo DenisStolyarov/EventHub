@@ -33,7 +33,7 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasColumnName("total_seats")
             .IsRequired();
 
-        builder.Property(e => e.StartAt)            
+        builder.Property(e => e.StartAt)
             .HasColumnName("start_at")
             .IsRequired();
 

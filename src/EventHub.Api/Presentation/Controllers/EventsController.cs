@@ -17,11 +17,11 @@ public class EventsController(IEventService eventService, IBookingService bookin
     [HttpGet]
     [ProducesResponseType(typeof(PaginatedResult<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<PaginatedResult<EventDto>>> GetAll([FromQuery] GetEventsRequest request)
+    public async Task<ActionResult<PaginatedResult<EventDto>>> GetAll([FromQuery] GetEventsRequest request, CancellationToken cancellationToken)
     {
         GetEventsDto dto = request.ToDto();
 
-        PaginatedResult<EventDto> page = await eventService.GetAllAsync(dto);
+        PaginatedResult<EventDto> page = await eventService.GetAllAsync(dto, cancellationToken);
 
         return Ok(page);
     }
@@ -29,9 +29,9 @@ public class EventsController(IEventService eventService, IBookingService bookin
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<EventDto>> GetById(Guid id)
+    public async Task<ActionResult<EventDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        EventDto @event = await eventService.GetByIdAsync(id);
+        EventDto @event = await eventService.GetByIdAsync(id, cancellationToken);
 
         return Ok(@event);
     }
@@ -40,11 +40,11 @@ public class EventsController(IEventService eventService, IBookingService bookin
     [ProducesResponseType(typeof(EventDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<ActionResult<EventDto>> Create(CreateEventRequest request)
+    public async Task<ActionResult<EventDto>> Create(CreateEventRequest request, CancellationToken cancellationToken)
     {
         CreateEventDto dto = request.ToDto();
 
-        EventDto created = await eventService.CreateAsync(dto);
+        EventDto created = await eventService.CreateAsync(dto, cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = created.Id, version = "1.0" }, created);
     }
@@ -54,11 +54,11 @@ public class EventsController(IEventService eventService, IBookingService bookin
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<ActionResult<EventDto>> Update(Guid id, UpdateEventRequest request)
+    public async Task<ActionResult<EventDto>> Update(Guid id, UpdateEventRequest request, CancellationToken cancellationToken)
     {
         UpdateEventDto dto = request.ToDto();
 
-        EventDto updated = await eventService.UpdateAsync(id, dto);
+        EventDto updated = await eventService.UpdateAsync(id, dto, cancellationToken);
 
         return Ok(updated);
     }
@@ -66,9 +66,9 @@ public class EventsController(IEventService eventService, IBookingService bookin
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        await eventService.DeleteAsync(id);
+        await eventService.DeleteAsync(id, cancellationToken);
 
         return NoContent();
     }
@@ -77,9 +77,9 @@ public class EventsController(IEventService eventService, IBookingService bookin
     [ProducesResponseType(typeof(BookingInfo), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<BookingInfo>> Book(Guid id)
+    public async Task<ActionResult<BookingInfo>> Book(Guid id, CancellationToken cancellationToken)
     {
-        BookingInfo booking = await bookingService.CreateBookingAsync(id);
+        BookingInfo booking = await bookingService.CreateBookingAsync(id, cancellationToken);
 
         return AcceptedAtAction(
             nameof(BookingsController.GetById),
