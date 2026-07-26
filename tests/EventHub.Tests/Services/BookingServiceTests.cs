@@ -56,7 +56,7 @@ public class BookingServiceTests : IDisposable
         EventDto @event = await CreateEventAsync(totalSeats: 1);
 
         // Act
-        BookingInfo result = await _bookingService.CreateBookingAsync(@event.Id);
+        BookingInfo result = await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
 
         // Assert
         result.Id.Should().NotBe(Guid.Empty);
@@ -82,8 +82,8 @@ public class BookingServiceTests : IDisposable
         EventDto @event = await CreateEventAsync(totalSeats: 2);
 
         // Act
-        BookingInfo first = await _bookingService.CreateBookingAsync(@event.Id);
-        BookingInfo second = await _bookingService.CreateBookingAsync(@event.Id);
+        BookingInfo first = await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
+        BookingInfo second = await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
 
         // Assert
         first.Id.Should().NotBe(second.Id);
@@ -111,8 +111,8 @@ public class BookingServiceTests : IDisposable
         EventDto @event = await CreateEventAsync(totalSeats: 1);
 
         // Act
-        BookingInfo first = await _bookingService.CreateBookingAsync(@event.Id);
-        Func<Task> second = () => _bookingService.CreateBookingAsync(@event.Id);
+        BookingInfo first = await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
+        Func<Task> second = () => _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
 
         // Assert
         first.EventId.Should().Be(@event.Id);
@@ -135,10 +135,10 @@ public class BookingServiceTests : IDisposable
     {
         // Arrange
         EventDto @event = await CreateEventAsync(totalSeats: 1);
-        await _bookingService.CreateBookingAsync(@event.Id);
+        await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
 
         // Act
-        Func<Task> act = () => _bookingService.CreateBookingAsync(@event.Id);
+        Func<Task> act = () => _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should().ThrowAsync<NoAvailableSeatsException>();
@@ -149,10 +149,10 @@ public class BookingServiceTests : IDisposable
     {
         // Arrange
         EventDto @event = await CreateEventAsync(totalSeats: 10);
-        BookingInfo created = await _bookingService.CreateBookingAsync(@event.Id);
+        BookingInfo created = await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
 
         // Act
-        BookingInfo result = await _bookingService.GetBookingByIdAsync(created.Id);
+        BookingInfo result = await _bookingService.GetBookingByIdAsync(created.Id, TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().BeEquivalentTo(new
@@ -168,7 +168,7 @@ public class BookingServiceTests : IDisposable
     {
         // Arrange
         EventDto @event = await CreateEventAsync(totalSeats: 10);
-        BookingInfo created = await _bookingService.CreateBookingAsync(@event.Id);
+        BookingInfo created = await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
         Booking? booking = await _dbContext.Bookings.FindAsync([created.Id], TestContext.Current.CancellationToken);
 
         booking.Should().NotBeNull();
@@ -177,7 +177,7 @@ public class BookingServiceTests : IDisposable
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
-        BookingInfo result = await _bookingService.GetBookingByIdAsync(created.Id);
+        BookingInfo result = await _bookingService.GetBookingByIdAsync(created.Id, TestContext.Current.CancellationToken);
 
         // Assert
         result.Status.Should().Be(BookingStatus.Confirmed);
@@ -188,7 +188,7 @@ public class BookingServiceTests : IDisposable
     {
         // Arrange
         EventDto @event = await CreateEventAsync(totalSeats: 10);
-        BookingInfo created = await _bookingService.CreateBookingAsync(@event.Id);
+        BookingInfo created = await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
         Booking? booking = await _dbContext.Bookings.FindAsync([created.Id], TestContext.Current.CancellationToken);
 
         booking.Should().NotBeNull();
@@ -197,7 +197,7 @@ public class BookingServiceTests : IDisposable
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
-        BookingInfo result = await _bookingService.GetBookingByIdAsync(created.Id);
+        BookingInfo result = await _bookingService.GetBookingByIdAsync(created.Id, TestContext.Current.CancellationToken);
 
         // Assert
         result.Status.Should().Be(BookingStatus.Rejected);
@@ -210,7 +210,7 @@ public class BookingServiceTests : IDisposable
         Guid eventId = Guid.NewGuid();
 
         // Act
-        Func<Task> act = () => _bookingService.CreateBookingAsync(eventId);
+        Func<Task> act = () => _bookingService.CreateBookingAsync(eventId, TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should()
@@ -229,7 +229,7 @@ public class BookingServiceTests : IDisposable
         Guid bookingId = Guid.NewGuid();
 
         // Act
-        Func<Task> act = () => _bookingService.GetBookingByIdAsync(bookingId);
+        Func<Task> act = () => _bookingService.GetBookingByIdAsync(bookingId, TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should()
@@ -253,7 +253,7 @@ public class BookingServiceTests : IDisposable
                 using IServiceScope scope = _serviceProvider.CreateScope();
                 IBookingService bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
 
-                return await bookingService.CreateBookingAsync(@event.Id);
+                return await bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
             }))
             .ToArray();
 
@@ -305,7 +305,7 @@ public class BookingServiceTests : IDisposable
                 using IServiceScope scope = _serviceProvider.CreateScope();
                 IBookingService bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
 
-                return await bookingService.CreateBookingAsync(@event.Id);
+                return await bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
             }));
 
         BookingInfo[] results = await Task.WhenAll(tasks);
@@ -340,6 +340,6 @@ public class BookingServiceTests : IDisposable
             EndAt = UtcDate(2026, 6, 1, 12)
         };
 
-        return await _eventService.CreateAsync(dto);
+        return await _eventService.CreateAsync(dto, TestContext.Current.CancellationToken);
     }
 }
