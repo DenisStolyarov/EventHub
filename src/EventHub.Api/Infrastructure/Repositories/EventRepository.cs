@@ -34,6 +34,7 @@ public sealed class EventRepository(AppDbContext context) : IEventRepository
         int totalCount = await query.CountAsync(cancellationToken);
 
         List<Event> events = await query
+            .OrderBy(e => e.StartAt)
             .Skip((filter.Page - 1) * filter.PageSize)
             .Take(filter.PageSize)
             .ToListAsync(cancellationToken);
