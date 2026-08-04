@@ -1,0 +1,21 @@
+using EventHub.Api.Domain.Interfaces;
+using EventHub.Api.Infrastructure.DataAccess;
+
+namespace EventHub.Api.Infrastructure.Repositories;
+
+public sealed class UnitOfWork(AppDbContext context) : IUnitOfWork
+{
+    private readonly Lazy<IEventRepository> _events = new(() => new EventRepository(context));
+    private readonly Lazy<IBookingRepository> _bookings = new(() => new BookingRepository(context));
+
+    public IEventRepository Events => _events.Value;
+
+    public IBookingRepository Bookings => _bookings.Value;
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
+        context.SaveChangesAsync(cancellationToken);
+
+    public void Dispose() => context.Dispose();
+
+    public ValueTask DisposeAsync() => context.DisposeAsync();
+}

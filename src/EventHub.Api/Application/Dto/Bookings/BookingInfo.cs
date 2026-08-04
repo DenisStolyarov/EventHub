@@ -11,6 +11,6 @@ public sealed record BookingInfo
     public required BookingStatus Status { get; init; }
 
     public required DateTime CreatedAt { get; init; }
-    
+
     public DateTime? ProcessedAt { get; init; }
 }

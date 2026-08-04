@@ -1,3 +1,4 @@
+using EventHub.Api.Domain.Common;
 using EventHub.Api.Domain.Entities;
 using EventHub.Api.Domain.Filters;
 
@@ -5,15 +6,11 @@ namespace EventHub.Api.Domain.Interfaces;
 
 public interface IEventRepository
 {
-    int Count(EventFilter filter);
+    Task<Event?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
-    IEnumerable<Event> GetAll(EventFilter filter, int page, int pageSize);
-
-    Event? GetById(Guid id);
+    Task<PagedResult<Event>> GetFilteredAsync(EventFilter filter, CancellationToken cancellationToken = default);
 
     void Add(Event @event);
 
-    void Update(Event @event);
-
-    void Delete(Guid id);
+    void Delete(Event @event);
 }

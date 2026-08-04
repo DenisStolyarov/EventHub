@@ -1,7 +1,6 @@
 using EventHub.Api.Domain.Entities;
 using EventHub.Api.Domain.Enums;
-using EventHub.Api.Infrastructure.DataAccess;
-using Microsoft.EntityFrameworkCore;
+using EventHub.Api.Domain.Interfaces;
 
 namespace EventHub.Api.Infrastructure.BackgroundServices;
 
@@ -18,16 +17,13 @@ public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<
         {
             try
             {
-                List<Guid> pendingBookingIds;
+                ICollection<Guid> pendingBookingIds;
 
                 await using (AsyncServiceScope scope = scopeFactory.CreateAsyncScope())
                 {
-                    AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    IUnitOfWork unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-                    pendingBookingIds = await db.Bookings
-                        .Where(booking => booking.Status == BookingStatus.Pending)
-                        .Select(booking => booking.Id)
-                        .ToListAsync(stoppingToken);
+                    pendingBookingIds = await unitOfWork.Bookings.GetPendingBookingIdsAsync(stoppingToken);
                 }
 
                 IEnumerable<Task> tasks = pendingBookingIds.Select(id => ProcessBookingAsync(id, stoppingToken));
@@ -58,9 +54,9 @@ public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<
             await Task.Delay(ProcessingDelay, stoppingToken);
 
             await using AsyncServiceScope scope = scopeFactory.CreateAsyncScope();
-            AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            IUnitOfWork unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-            Booking? booking = await db.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, stoppingToken);
+            Booking? booking = await unitOfWork.Bookings.GetByIdAsync(bookingId, stoppingToken);
 
             if (booking is null)
             {
@@ -76,13 +72,13 @@ public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<
                 return;
             }
 
-            Event? @event = await db.Events.FirstOrDefaultAsync(e => e.Id == booking.EventId, stoppingToken);
+            Event? @event = await unitOfWork.Events.GetByIdAsync(booking.EventId, stoppingToken);
 
             if (@event is null)
             {
                 booking.Reject();
 
-                await db.SaveChangesAsync(stoppingToken);
+                await unitOfWork.SaveChangesAsync(stoppingToken);
 
                 logger.LogWarning("Event {id} not found for booking {bookingId}", booking.EventId, booking.Id);
 
@@ -91,7 +87,7 @@ public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<
 
             booking.Confirm();
 
-            await db.SaveChangesAsync(stoppingToken);
+            await unitOfWork.SaveChangesAsync(stoppingToken);
 
             logger.LogInformation("Booking {id} is processed", booking.Id);
         }
@@ -104,19 +100,19 @@ public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<
             try
             {
                 await using AsyncServiceScope scope = scopeFactory.CreateAsyncScope();
-                AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                IUnitOfWork unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-                Booking? booking = await db.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, stoppingToken);
+                Booking? booking = await unitOfWork.Bookings.GetByIdAsync(bookingId, stoppingToken);
 
                 if (booking is not null)
                 {
                     booking.Reject();
 
-                    Event? @event = await db.Events.FirstOrDefaultAsync(e => e.Id == booking.EventId, stoppingToken);
+                    Event? @event = await unitOfWork.Events.GetByIdAsync(booking.EventId, stoppingToken);
 
                     @event?.ReleaseSeats();
 
-                    await db.SaveChangesAsync(stoppingToken);
+                    await unitOfWork.SaveChangesAsync(stoppingToken);
                 }
 
                 logger.LogError(ex, "Booking {Id} rejected due to processing error", bookingId);

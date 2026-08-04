@@ -5,4 +5,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/EventHub.Tests/EventHub.Tests.csproj" />
   </Folder>
+  <Folder Name="/tests/EventHub.IntegrationTests/">
+    <Project Path="tests/EventHub.IntegrationTests/EventHub.IntegrationTests.csproj" />
+  </Folder>
 </Solution>

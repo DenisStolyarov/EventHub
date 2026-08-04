@@ -4,17 +4,18 @@ using EventHub.Api.Application.Dto.Events;
 using EventHub.Api.Application.Errors;
 using EventHub.Api.Application.Exceptions;
 using EventHub.Api.Application.Interfaces;
+using EventHub.Api.Domain.Common;
 using EventHub.Api.Domain.Entities;
 using EventHub.Api.Domain.Exceptions;
+using EventHub.Api.Domain.Filters;
+using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Domain.ValueObjects;
-using EventHub.Api.Infrastructure.DataAccess;
-using Microsoft.EntityFrameworkCore;
 
 namespace EventHub.Api.Application.Services;
 
-public sealed class EventService(AppDbContext context) : IEventService
+public sealed class EventService(IUnitOfWork unitOfWork) : IEventService
 {
-    public async Task<PaginatedResult<EventDto>> GetAllAsync(GetEventsDto dto)
+    public async Task<PaginatedResult<EventDto>> GetAllAsync(GetEventsDto dto, CancellationToken cancellationToken = default)
     {
         DateTime? from = dto.From?.UtcDateTime;
         DateTime? to = dto.To?.UtcDateTime;
@@ -24,87 +25,66 @@ public sealed class EventService(AppDbContext context) : IEventService
             throw new ValidationException(nameof(GetEventsDto.From), EventServiceErrors.FromMustBeBeforeTo);
         }
 
-        IQueryable<Event> query = context.Events;
-
-        if (!string.IsNullOrWhiteSpace(dto.Title))
-        {
-            query = query.Where(e => e.Title.Contains(dto.Title));
-        }
-        if (from.HasValue)
-        {
-            query = query.Where(e => e.StartAt >= from.Value);
-        }
-        if (to.HasValue)
-        {
-            query = query.Where(e => e.EndAt <= to.Value);
-        }
-
         int pageNumber = Math.Max(1, dto.Page);
         int pageSize = Math.Clamp(dto.PageSize, 1, Pagination.MaxPageSize);
 
-        int totalRecords = await query.CountAsync();
+        EventFilter filter = new() { Title = dto.Title, From = from, To = to, Page = pageNumber, PageSize = pageSize };
 
-        int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+        PagedResult<Event> result = await unitOfWork.Events.GetFilteredAsync(filter, cancellationToken);
 
-        List<Event> events = await query
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        List<EventDto> data = [.. events.ToDto()];
+        List<EventDto> data = [.. result.Items.ToDto()];
 
         return new PaginatedResult<EventDto>
         {
             Data = data,
             PageNumber = pageNumber,
             PageSize = pageSize,
-            TotalRecords = totalRecords,
-            TotalPages = totalPages,
+            TotalRecords = result.TotalCount,
             ItemsOnPage = data.Count,
         };
     }
 
-    public async Task<EventDto> GetByIdAsync(Guid id)
+    public async Task<EventDto> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        Event? @event = await context.Events.FindAsync(id)
+        Event @event = await unitOfWork.Events.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException(nameof(Event), id);
 
         return @event.ToDto();
     }
 
-    public async Task<EventDto> CreateAsync(CreateEventDto dto)
+    public async Task<EventDto> CreateAsync(CreateEventDto dto, CancellationToken cancellationToken = default)
     {
         Period period = new(dto.StartAt.UtcDateTime, dto.EndAt.UtcDateTime);
         Event @event = new(Guid.CreateVersion7(), dto.Title, dto.Description, dto.TotalSeats, period);
 
-        context.Events.Add(@event);
+        unitOfWork.Events.Add(@event);
 
-        await context.SaveChangesAsync();
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return @event.ToDto();
     }
 
-    public async Task<EventDto> UpdateAsync(Guid id, UpdateEventDto dto)
+    public async Task<EventDto> UpdateAsync(Guid id, UpdateEventDto dto, CancellationToken cancellationToken = default)
     {
         Period period = new(dto.StartAt.UtcDateTime, dto.EndAt.UtcDateTime);
 
-        Event? existing = await context.Events.FindAsync(id)
+        Event existing = await unitOfWork.Events.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException(nameof(Event), id);
 
         existing.Update(dto.Title, dto.Description, period);
 
-        await context.SaveChangesAsync();
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return existing.ToDto();
     }
 
-    public async Task DeleteAsync(Guid id)
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        Event? existing = await context.Events.FindAsync(id)
+        Event existing = await unitOfWork.Events.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException(nameof(Event), id);
 
-        context.Events.Remove(existing);
+        unitOfWork.Events.Delete(existing);
 
-        await context.SaveChangesAsync();
+        await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

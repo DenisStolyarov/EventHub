@@ -49,15 +49,54 @@ dotnet build
 dotnet run --project src/EventHub.Api
 ```
 
-The database schema is created automatically on startup using `EnsureCreatedAsync`. No manual migrations are required for local development.
+The database schema is managed by EF Core migrations and applied automatically on startup via `Database.MigrateAsync()`.
 
 After launch, Swagger UI is available at: [http://localhost:5000/swagger](http://localhost:5000/swagger).
 
+## Migrations
+
+The schema is versioned with EF Core migrations stored in `src/EventHub.Api/Infrastructure/DataAccess/Migrations`.
+
+Create a new migration after changing the model in `AppDbContext` or entity configurations:
+
+```bash
+dotnet ef migrations add <MigrationName> --project src/EventHub.Api --output-dir Infrastructure/DataAccess/Migrations
+```
+
+Apply pending migrations manually
+
+```bash
+dotnet ef database update --project src/EventHub.Api
+```
+
 ## Testing
 
-Unit and integration tests use the EF Core InMemory provider. Each test class gets its own isolated in-memory database via `ServiceCollection` and `AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(dbName))`.
+The solution contains two test projects:
 
-Run all tests from the repository root:
+| Project | Provider | Docker required |
+| ------- | -------- | --------------- |
+| `EventHub.Tests` | EF Core InMemory | No |
+| `EventHub.IntegrationTests` | Real PostgreSQL via Testcontainers | Yes |
+
+### Unit tests (`EventHub.Tests`)
+
+Use the EF Core InMemory provider, Moq, and a fake time provider. Each test class gets its own isolated in-memory database, so no external dependencies are required.
+
+```bash
+dotnet test tests/EventHub.Tests
+```
+
+### Integration tests (`EventHub.IntegrationTests`)
+
+Run against a real PostgreSQL instance provisioned on demand by **Testcontainers**. The `IntegrationTestFixture` starts a single `postgres:16-alpine` container per test class and applies migrations via `MigrateAsync`. Between tests, `ResetDataAsync()` truncates all tables so each method starts from a clean state.
+
+> **Docker is required.** The Docker daemon must be running before executing these tests.
+
+```bash
+dotnet test tests/EventHub.IntegrationTests
+```
+
+### Run all tests
 
 ```bash
 dotnet test
@@ -328,4 +367,4 @@ Event and booking data is stored in PostgreSQL and accessed through Entity Frame
 
 Filtering, pagination, and counting are implemented with `IQueryable` and executed by EF Core. `EventService` validates input, normalizes pagination parameters, builds the query, and maps results to DTOs. This keeps the service independent from storage details and allows efficient query execution at the database level.
 
-Tests use the EF Core InMemory provider instead of PostgreSQL so they can run without an external database and remain isolated from each other.
+Unit tests use the EF Core InMemory provider instead of PostgreSQL so they can run without an external database and remain isolated from each other. Integration tests run against a real PostgreSQL instance provisioned by Testcontainers (requires Docker).

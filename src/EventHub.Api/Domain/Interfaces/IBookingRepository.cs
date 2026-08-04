@@ -4,15 +4,9 @@ namespace EventHub.Api.Domain.Interfaces;
 
 public interface IBookingRepository
 {
-    IEnumerable<Booking> GetAll();
+    Task<Booking?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
-    IEnumerable<Booking> GetPendingBookings();
-
-    Booking? GetById(Guid id);
+    Task<ICollection<Guid>> GetPendingBookingIdsAsync(CancellationToken cancellationToken = default);
 
     void Add(Booking booking);
-
-    void Update(Booking booking);
-
-    void Delete(Guid id);
 }

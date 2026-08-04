@@ -6,8 +6,10 @@ using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Application.Services;
 using EventHub.Api.Domain.Entities;
 using EventHub.Api.Domain.Exceptions;
+using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Domain.ValueObjects;
 using EventHub.Api.Infrastructure.DataAccess;
+using EventHub.Api.Infrastructure.Repositories;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +32,7 @@ public class EventServiceTests : IDisposable
         ServiceCollection services = new();
 
         services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(dbName));
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IEventService, EventService>();
 
         _serviceProvider = services.BuildServiceProvider();
@@ -61,7 +64,7 @@ public class EventServiceTests : IDisposable
         };
 
         // Act
-        EventDto result = await _eventService.CreateAsync(dto);
+        EventDto result = await _eventService.CreateAsync(dto, TestContext.Current.CancellationToken);
 
         // Assert
         result.Id.Should().NotBeEmpty();
@@ -102,7 +105,7 @@ public class EventServiceTests : IDisposable
         };
 
         // Act
-        Func<Task> act = () => _eventService.CreateAsync(dto);
+        Func<Task> act = () => _eventService.CreateAsync(dto, TestContext.Current.CancellationToken);
 
         // Assert
         (await act.Should()
@@ -130,7 +133,7 @@ public class EventServiceTests : IDisposable
         };
 
         // Act
-        Func<Task> act = () => _eventService.CreateAsync(dto);
+        Func<Task> act = () => _eventService.CreateAsync(dto, TestContext.Current.CancellationToken);
 
         // Assert
         (await act.Should()
@@ -158,7 +161,7 @@ public class EventServiceTests : IDisposable
         };
 
         // Act
-        Func<Task> act = () => _eventService.CreateAsync(dto);
+        Func<Task> act = () => _eventService.CreateAsync(dto, TestContext.Current.CancellationToken);
 
         // Assert
         (await act.Should()
@@ -187,7 +190,7 @@ public class EventServiceTests : IDisposable
         EventDto existing = await CreateEventAsync();
 
         // Act
-        EventDto result = await _eventService.UpdateAsync(existing.Id, dto);
+        EventDto result = await _eventService.UpdateAsync(existing.Id, dto, TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().BeEquivalentTo(new
@@ -224,7 +227,7 @@ public class EventServiceTests : IDisposable
         Guid id = Guid.NewGuid();
 
         // Act
-        Func<Task> act = () => _eventService.UpdateAsync(id, dto);
+        Func<Task> act = () => _eventService.UpdateAsync(id, dto, TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();
@@ -246,7 +249,7 @@ public class EventServiceTests : IDisposable
         };
 
         // Act
-        Func<Task> act = () => _eventService.UpdateAsync(existing.Id, dto);
+        Func<Task> act = () => _eventService.UpdateAsync(existing.Id, dto, TestContext.Current.CancellationToken);
 
         // Assert
         (await act.Should()
@@ -266,7 +269,7 @@ public class EventServiceTests : IDisposable
         EventDto existing = await CreateEventAsync(startAt: UtcDate(2026, 6, 3, 10), endAt: UtcDate(2026, 6, 3, 11));
 
         // Act
-        EventDto result = await _eventService.GetByIdAsync(existing.Id);
+        EventDto result = await _eventService.GetByIdAsync(existing.Id, TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().BeEquivalentTo(new
@@ -288,7 +291,7 @@ public class EventServiceTests : IDisposable
         Guid id = Guid.NewGuid();
 
         // Act
-        Func<Task> act = () => _eventService.GetByIdAsync(id);
+        Func<Task> act = () => _eventService.GetByIdAsync(id, TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should()
@@ -311,7 +314,7 @@ public class EventServiceTests : IDisposable
         GetEventsDto dto = new() { Page = 2, PageSize = 2 };
 
         // Act
-        PaginatedResult<EventDto> result = await _eventService.GetAllAsync(dto);
+        PaginatedResult<EventDto> result = await _eventService.GetAllAsync(dto, TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().BeEquivalentTo(new
@@ -340,7 +343,7 @@ public class EventServiceTests : IDisposable
         GetEventsDto dto = new() { Title = title };
 
         // Act
-        PaginatedResult<EventDto> result = await _eventService.GetAllAsync(dto);
+        PaginatedResult<EventDto> result = await _eventService.GetAllAsync(dto, TestContext.Current.CancellationToken);
 
         // Assert
         result.TotalRecords.Should().Be(1);
@@ -368,7 +371,7 @@ public class EventServiceTests : IDisposable
         };
 
         // Act
-        PaginatedResult<EventDto> result = await _eventService.GetAllAsync(dto);
+        PaginatedResult<EventDto> result = await _eventService.GetAllAsync(dto, TestContext.Current.CancellationToken);
 
         // Assert
         result.TotalRecords.Should().Be(1);
@@ -386,7 +389,7 @@ public class EventServiceTests : IDisposable
         };
 
         // Act
-        Func<Task> act = () => _eventService.GetAllAsync(dto);
+        Func<Task> act = () => _eventService.GetAllAsync(dto, TestContext.Current.CancellationToken);
 
         // Assert
         (await act.Should()
@@ -413,7 +416,7 @@ public class EventServiceTests : IDisposable
         GetEventsDto dto = new() { Page = page, PageSize = pageSize };
 
         // Act
-        PaginatedResult<EventDto> result = await _eventService.GetAllAsync(dto);
+        PaginatedResult<EventDto> result = await _eventService.GetAllAsync(dto, TestContext.Current.CancellationToken);
 
         // Assert
         result.PageNumber.Should().Be(expectedPage);
@@ -447,7 +450,7 @@ public class EventServiceTests : IDisposable
             To = UtcDate(2026, 8, 31, 23),
             Page = 1,
             PageSize = 10
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Assert
         result.TotalRecords.Should().Be(1);
@@ -461,7 +464,7 @@ public class EventServiceTests : IDisposable
         EventDto existing = await CreateEventAsync();
 
         // Act
-        await _eventService.DeleteAsync(existing.Id);
+        await _eventService.DeleteAsync(existing.Id, TestContext.Current.CancellationToken);
 
         // Assert
         Event? storedEvent = await _dbContext.Events.FindAsync([existing.Id], TestContext.Current.CancellationToken);
@@ -476,7 +479,7 @@ public class EventServiceTests : IDisposable
         Guid id = Guid.NewGuid();
 
         // Act
-        Func<Task> act = () => _eventService.DeleteAsync(id);
+        Func<Task> act = () => _eventService.DeleteAsync(id, TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should()
@@ -502,6 +505,6 @@ public class EventServiceTests : IDisposable
             EndAt = end
         };
 
-        return await _eventService.CreateAsync(dto);
+        return await _eventService.CreateAsync(dto, TestContext.Current.CancellationToken);
     }
 }

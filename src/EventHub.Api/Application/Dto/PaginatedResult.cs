@@ -8,8 +8,6 @@ public sealed record PaginatedResult<T>
 
     public int PageSize { get; init; }
 
-    public int TotalPages { get; init; }
-
     public int TotalRecords { get; init; }
 
     public int ItemsOnPage { get; init; }
@@ -17,4 +15,6 @@ public sealed record PaginatedResult<T>
     public bool HasNextPage => PageNumber < TotalPages;
 
     public bool HasPreviousPage => PageNumber > 1;
+
+    public int TotalPages => (int)Math.Ceiling((double)TotalRecords / PageSize);
 }

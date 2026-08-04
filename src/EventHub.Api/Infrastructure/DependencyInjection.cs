@@ -13,10 +13,9 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
-        services.AddHostedService<BookingProcessor>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        services.AddSingleton<IEventRepository, InMemoryEventRepository>();
-        services.AddSingleton<IBookingRepository, InMemoryBookingRepository>();
+        services.AddHostedService<BookingProcessor>();
 
         return services;
     }
@@ -27,6 +26,6 @@ public static class DependencyInjection
 
         AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        await dbContext.Database.EnsureCreatedAsync();
+        await dbContext.Database.MigrateAsync();
     }
 }
