@@ -25,7 +25,7 @@ public sealed class IntegrationTestFixture : IAsyncLifetime
 
         _provider = BuildServiceProvider();
 
-        await EnsureDatabaseCreatedAsync();
+        await ApplyMigrationsAsync();
     }
 
     public async ValueTask DisposeAsync()
@@ -74,7 +74,7 @@ public sealed class IntegrationTestFixture : IAsyncLifetime
         return services.BuildServiceProvider();
     }
 
-    private async Task EnsureDatabaseCreatedAsync()
+    private async Task ApplyMigrationsAsync()
     {
         await using AppDbContext ctx = CreateContext();
 
