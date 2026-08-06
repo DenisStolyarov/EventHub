@@ -1,6 +1,9 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/EventHub.Api/EventHub.Api.csproj" />
+    <Project Path="src/EventHub.Application/EventHub.Application.csproj" />
+    <Project Path="src/EventHub.Domain/EventHub.Domain.csproj" />
+    <Project Path="src/EventHub.Infrastructure/EventHub.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/EventHub.Tests/EventHub.Tests.csproj" />
