@@ -1,6 +1,6 @@
+using EventHub.Application.Abstractions.Persistence;
 using EventHub.Domain.Entities;
 using EventHub.Domain.Enums;
-using EventHub.Api.Domain.Interfaces;
 
 namespace EventHub.Api.Infrastructure.BackgroundServices;
 

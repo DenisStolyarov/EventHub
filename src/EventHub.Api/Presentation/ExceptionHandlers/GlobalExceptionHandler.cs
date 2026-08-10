@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using EventHub.Api.Application.Exceptions;
+using EventHub.Application.Exceptions;
 using EventHub.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;

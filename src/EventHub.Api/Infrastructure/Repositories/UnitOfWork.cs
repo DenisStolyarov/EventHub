@@ -1,5 +1,6 @@
-using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Infrastructure.DataAccess;
+using EventHub.Application.Abstractions.Persistence;
+using EventHub.Application.Abstractions.Persistence.Repositories;
 
 namespace EventHub.Api.Infrastructure.Repositories;
 

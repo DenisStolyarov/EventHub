@@ -1,7 +1,7 @@
-using EventHub.Api.Domain.Common;
-using EventHub.Api.Domain.Filters;
-using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Infrastructure.DataAccess;
+using EventHub.Application.Abstractions.Persistence.Repositories;
+using EventHub.Application.Common;
+using EventHub.Application.Filters;
 using EventHub.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 

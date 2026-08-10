@@ -1,17 +1,16 @@
-using EventHub.Api.Application.Dto.Bookings;
-using EventHub.Api.Application.Dto.Events;
-using EventHub.Api.Application.Exceptions;
-using EventHub.Api.Application.Interfaces;
-using EventHub.Api.Application.Services;
-using EventHub.Domain.Entities;
-using EventHub.Domain.Enums;
-using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Infrastructure.DataAccess;
 using EventHub.Api.Infrastructure.Repositories;
+using EventHub.Application.Abstractions.Persistence;
+using EventHub.Application.Abstractions.Services;
+using EventHub.Application.Dto.Bookings;
+using EventHub.Application.Dto.Events;
+using EventHub.Application.Exceptions;
+using EventHub.Application.Services;
+using EventHub.Domain.Entities;
+using EventHub.Domain.Enums;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-
 using static EventHub.Tests.TestUtilities.TestDateTime;
 
 namespace EventHub.Tests.Services;

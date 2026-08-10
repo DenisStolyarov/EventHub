@@ -1,4 +1,4 @@
-using EventHub.Api.Application.Dto.Events;
+using EventHub.Application.Dto.Events;
 
 namespace EventHub.Api.Presentation.Dto.Events;
 

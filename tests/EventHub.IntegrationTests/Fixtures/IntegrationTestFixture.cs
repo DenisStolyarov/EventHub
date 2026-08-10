@@ -1,6 +1,6 @@
-using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Infrastructure.DataAccess;
 using EventHub.Api.Infrastructure.Repositories;
+using EventHub.Application.Abstractions.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
