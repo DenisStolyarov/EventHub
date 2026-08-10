@@ -1,7 +1,7 @@
-using EventHub.Api.Domain.Enums;
-using EventHub.Api.Domain.Exceptions;
+using EventHub.Domain.Enums;
+using EventHub.Domain.Exceptions;
 
-namespace EventHub.Api.Domain.Entities;
+namespace EventHub.Domain.Entities;
 
 public class Booking
 {

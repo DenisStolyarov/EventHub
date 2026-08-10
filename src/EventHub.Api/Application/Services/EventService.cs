@@ -5,11 +5,11 @@ using EventHub.Api.Application.Errors;
 using EventHub.Api.Application.Exceptions;
 using EventHub.Api.Application.Interfaces;
 using EventHub.Api.Domain.Common;
-using EventHub.Api.Domain.Entities;
-using EventHub.Api.Domain.Exceptions;
 using EventHub.Api.Domain.Filters;
 using EventHub.Api.Domain.Interfaces;
-using EventHub.Api.Domain.ValueObjects;
+using EventHub.Domain.Entities;
+using EventHub.Domain.Exceptions;
+using EventHub.Domain.ValueObjects;
 
 namespace EventHub.Api.Application.Services;
 

@@ -1,6 +1,6 @@
 using EventHub.Api.Domain.Common;
-using EventHub.Api.Domain.Entities;
 using EventHub.Api.Domain.Filters;
+using EventHub.Domain.Entities;
 
 namespace EventHub.Api.Domain.Interfaces;
 

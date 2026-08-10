@@ -1,4 +1,4 @@
-using EventHub.Api.Domain.Entities;
+using EventHub.Domain.Entities;
 
 namespace EventHub.Api.Application.Dto.Events;
 

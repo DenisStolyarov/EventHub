@@ -1,7 +1,7 @@
-using EventHub.Api.Domain.Exceptions;
-using EventHub.Api.Domain.ValueObjects;
+using EventHub.Domain.Exceptions;
+using EventHub.Domain.ValueObjects;
 
-namespace EventHub.Api.Domain.Entities;
+namespace EventHub.Domain.Entities;
 
 public class Event
 {

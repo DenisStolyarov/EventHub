@@ -1,4 +1,4 @@
-using EventHub.Api.Domain.Enums;
+using EventHub.Domain.Enums;
 
 namespace EventHub.Api.Application.Dto.Bookings;
 

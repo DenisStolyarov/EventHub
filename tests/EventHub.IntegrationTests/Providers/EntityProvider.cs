@@ -1,5 +1,5 @@
-using EventHub.Api.Domain.Entities;
-using EventHub.Api.Domain.ValueObjects;
+using EventHub.Domain.Entities;
+using EventHub.Domain.ValueObjects;
 
 namespace EventHub.IntegrationTests.Providers;
 

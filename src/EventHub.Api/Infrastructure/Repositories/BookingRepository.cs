@@ -1,7 +1,7 @@
-using EventHub.Api.Domain.Entities;
-using EventHub.Api.Domain.Enums;
 using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Infrastructure.DataAccess;
+using EventHub.Domain.Entities;
+using EventHub.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventHub.Api.Infrastructure.Repositories;

@@ -1,6 +1,6 @@
-using EventHub.Api.Domain.Exceptions;
+using EventHub.Domain.Exceptions;
 
-namespace EventHub.Api.Domain.ValueObjects;
+namespace EventHub.Domain.ValueObjects;
 
 public readonly record struct Period
 {

@@ -1,4 +1,4 @@
-namespace EventHub.Api.Domain.Enums;
+namespace EventHub.Domain.Enums;
 
 public enum BookingStatus
 {

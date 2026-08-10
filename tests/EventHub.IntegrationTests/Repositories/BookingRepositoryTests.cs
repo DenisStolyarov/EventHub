@@ -1,5 +1,5 @@
-using EventHub.Api.Domain.Entities;
-using EventHub.Api.Domain.Enums;
+using EventHub.Domain.Entities;
+using EventHub.Domain.Enums;
 using EventHub.Api.Domain.Interfaces;
 using EventHub.Api.Infrastructure.DataAccess;
 using EventHub.IntegrationTests.Abstractions;

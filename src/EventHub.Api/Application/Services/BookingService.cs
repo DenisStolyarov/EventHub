@@ -1,8 +1,8 @@
 using EventHub.Api.Application.Dto.Bookings;
 using EventHub.Api.Application.Exceptions;
 using EventHub.Api.Application.Interfaces;
-using EventHub.Api.Domain.Entities;
 using EventHub.Api.Domain.Interfaces;
+using EventHub.Domain.Entities;
 
 namespace EventHub.Api.Application.Services;
 

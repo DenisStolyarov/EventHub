@@ -1,4 +1,4 @@
-namespace EventHub.Api.Domain.Exceptions;
+namespace EventHub.Domain.Exceptions;
 
 public class DomainException : Exception
 {

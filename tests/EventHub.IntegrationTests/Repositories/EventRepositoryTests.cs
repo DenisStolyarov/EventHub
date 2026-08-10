@@ -1,8 +1,8 @@
 using EventHub.Api.Domain.Common;
-using EventHub.Api.Domain.Entities;
+using EventHub.Domain.Entities;
 using EventHub.Api.Domain.Filters;
 using EventHub.Api.Domain.Interfaces;
-using EventHub.Api.Domain.ValueObjects;
+using EventHub.Domain.ValueObjects;
 using EventHub.Api.Infrastructure.DataAccess;
 using EventHub.IntegrationTests.Abstractions;
 using EventHub.IntegrationTests.Fixtures;
