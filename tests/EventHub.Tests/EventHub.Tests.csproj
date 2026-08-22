@@ -7,7 +7,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\EventHub.Api\EventHub.Api.csproj" />
+    <ProjectReference Include="..\..\src\EventHub.Infrastructure\EventHub.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
