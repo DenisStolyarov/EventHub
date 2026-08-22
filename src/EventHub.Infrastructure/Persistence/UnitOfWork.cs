@@ -1,8 +1,8 @@
-using EventHub.Api.Infrastructure.DataAccess;
 using EventHub.Application.Abstractions.Persistence;
 using EventHub.Application.Abstractions.Persistence.Repositories;
+using EventHub.Infrastructure.Persistence.Repositories;
 
-namespace EventHub.Api.Infrastructure.Repositories;
+namespace EventHub.Infrastructure.Persistence;
 
 public sealed class UnitOfWork(AppDbContext context) : IUnitOfWork
 {

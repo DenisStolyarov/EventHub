@@ -1,10 +1,11 @@
-using EventHub.Api.Infrastructure.BackgroundServices;
-using EventHub.Api.Infrastructure.DataAccess;
-using EventHub.Api.Infrastructure.Repositories;
 using EventHub.Application.Abstractions.Persistence;
+using EventHub.Infrastructure.BackgroundServices;
+using EventHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace EventHub.Api.Infrastructure;
+namespace EventHub.Infrastructure;
 
 public static class DependencyInjection
 {

@@ -1,8 +1,11 @@
 using EventHub.Application.Abstractions.Persistence;
 using EventHub.Domain.Entities;
 using EventHub.Domain.Enums;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
-namespace EventHub.Api.Infrastructure.BackgroundServices;
+namespace EventHub.Infrastructure.BackgroundServices;
 
 public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<BookingProcessor> logger) : BackgroundService
 {

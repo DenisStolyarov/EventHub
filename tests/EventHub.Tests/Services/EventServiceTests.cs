@@ -1,5 +1,3 @@
-using EventHub.Api.Infrastructure.DataAccess;
-using EventHub.Api.Infrastructure.Repositories;
 using EventHub.Application.Abstractions.Persistence;
 using EventHub.Application.Abstractions.Services;
 using EventHub.Application.Constants;
@@ -10,6 +8,7 @@ using EventHub.Application.Services;
 using EventHub.Domain.Entities;
 using EventHub.Domain.Exceptions;
 using EventHub.Domain.ValueObjects;
+using EventHub.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

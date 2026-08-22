@@ -1,11 +1,10 @@
-using EventHub.Api.Infrastructure.DataAccess;
 using EventHub.Application.Abstractions.Persistence.Repositories;
 using EventHub.Application.Common;
 using EventHub.Application.Filters;
 using EventHub.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace EventHub.Api.Infrastructure.Repositories;
+namespace EventHub.Infrastructure.Persistence.Repositories;
 
 public sealed class EventRepository(AppDbContext context) : IEventRepository
 {

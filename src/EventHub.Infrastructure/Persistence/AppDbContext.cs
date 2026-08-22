@@ -1,7 +1,7 @@
 using EventHub.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace EventHub.Api.Infrastructure.DataAccess;
+namespace EventHub.Infrastructure.Persistence;
 
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {

@@ -2,7 +2,7 @@ using EventHub.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace EventHub.Api.Infrastructure.DataAccess.Configurations;
+namespace EventHub.Infrastructure.Persistence.Configurations;
 
 internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>
 {

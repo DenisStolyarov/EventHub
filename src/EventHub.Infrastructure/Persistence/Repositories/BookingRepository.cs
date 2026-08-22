@@ -1,10 +1,9 @@
-using EventHub.Api.Infrastructure.DataAccess;
 using EventHub.Application.Abstractions.Persistence.Repositories;
 using EventHub.Domain.Entities;
 using EventHub.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace EventHub.Api.Infrastructure.Repositories;
+namespace EventHub.Infrastructure.Persistence.Repositories;
 
 public sealed class BookingRepository(AppDbContext context) : IBookingRepository
 {
