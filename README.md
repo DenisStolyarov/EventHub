@@ -2,14 +2,29 @@
 
 REST API service for managing events, built on ASP.NET Core Web API.
 
+## Project Architecture
+
+```
+Presentation (EventHub.Api) ──▶ Application ──▶ Domain
+        │
+        └──▶ Infrastructure ──▶ Application
+```
+
+| Project                   | Responsibility                                                                                                 |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `EventHub.Domain`         | Core entities, value objects, enums, and domain exceptions. Pure C# — no framework references.                 |
+| `EventHub.Application`    | Business logic: use-case services, port interfaces, DTOs, filters, and mapping extensions.                     |
+| `EventHub.Infrastructure` | EF Core persistence, repositories, migrations, and background processing.                                      |
+| `EventHub.Api`            | Composition root, thin controllers, request DTOs, exception handler, and Swagger/API versioning configuration. |
+
 ## Requirements
 
 - .NET 10 SDK or later
 - PostgreSQL 14+
 
-## Database Setup
+## Database
 
-The application stores events and bookings in PostgreSQL. The easiest way to start a local database is with Docker Compose:
+Start a local PostgreSQL database with Docker Compose:
 
 ```bash
 docker compose up -d
@@ -39,7 +54,7 @@ Set the connection string in `appsettings.json`:
 }
 ```
 
-You can also configure the connection string via environment variables or .NET user secrets.
+You can also override it via environment variables or .NET user secrets.
 
 ## Build and Run
 
@@ -49,38 +64,34 @@ dotnet build
 dotnet run --project src/EventHub.Api
 ```
 
-The database schema is managed by EF Core migrations and applied automatically on startup via `Database.MigrateAsync()`.
-
 After launch, Swagger UI is available at: [http://localhost:5000/swagger](http://localhost:5000/swagger).
 
 ## Migrations
 
-The schema is versioned with EF Core migrations stored in `src/EventHub.Api/Infrastructure/DataAccess/Migrations`.
+Migrations live in `EventHub.Infrastructure`; use `EventHub.Api` as the startup project for configuration.
 
 Create a new migration after changing the model in `AppDbContext` or entity configurations:
 
 ```bash
-dotnet ef migrations add <MigrationName> --project src/EventHub.Api --output-dir Infrastructure/DataAccess/Migrations
+dotnet ef migrations add <MigrationName> --project src/EventHub.Infrastructure --output-dir Persistence/Migrations --startup-project src/EventHub.Api
 ```
 
-Apply pending migrations manually
+Apply pending migrations manually:
 
 ```bash
-dotnet ef database update --project src/EventHub.Api
+dotnet ef database update --project src/EventHub.Infrastructure --startup-project src/EventHub.Api
 ```
 
 ## Testing
 
-The solution contains two test projects:
-
-| Project | Provider | Docker required |
-| ------- | -------- | --------------- |
-| `EventHub.Tests` | EF Core InMemory | No |
-| `EventHub.IntegrationTests` | Real PostgreSQL via Testcontainers | Yes |
+| Project                     | Provider                           | Docker required |
+| --------------------------- | ---------------------------------- | --------------- |
+| `EventHub.Tests`            | EF Core InMemory                   | No              |
+| `EventHub.IntegrationTests` | Real PostgreSQL via Testcontainers | Yes             |
 
 ### Unit tests (`EventHub.Tests`)
 
-Use the EF Core InMemory provider, Moq, and a fake time provider. Each test class gets its own isolated in-memory database, so no external dependencies are required.
+Moq and a fake time provider. Each test class gets an isolated in-memory database.
 
 ```bash
 dotnet test tests/EventHub.Tests
@@ -88,7 +99,7 @@ dotnet test tests/EventHub.Tests
 
 ### Integration tests (`EventHub.IntegrationTests`)
 
-Run against a real PostgreSQL instance provisioned on demand by **Testcontainers**. The `IntegrationTestFixture` starts a single `postgres:16-alpine` container per test class and applies migrations via `MigrateAsync`. Between tests, `ResetDataAsync()` truncates all tables so each method starts from a clean state.
+The `IntegrationTestFixture` starts a single `postgres:16-alpine` container per test class, applies migrations via `MigrateAsync`, and truncates all tables between tests via `ResetDataAsync()`.
 
 > **Docker is required.** The Docker daemon must be running before executing these tests.
 
@@ -141,24 +152,6 @@ The response is wrapped in a `PaginatedResult` object:
 | hasNextPage     | bool  | Whether a next page exists          |
 | hasPreviousPage | bool  | Whether a previous page exists      |
 
-### Versioning Examples
-
-**URL segment:**
-```
-GET /api/v1/events
-```
-
-**Header:**
-```
-GET /api/v1/events
-X-Api-Version: 1.0
-```
-
-**Query string:**
-```
-GET /api/v1/events?api-version=1.0
-```
-
 ## Event Model
 
 | Field          | Type           | Required | Description                                                         |
@@ -183,11 +176,11 @@ Booking endpoints return `BookingInfo`.
 
 ### Booking Status
 
-| Value     | Description                               |
-| --------- | ----------------------------------------- |
-| Pending   | Booking was created and awaits processing |
-| Confirmed | Booking was confirmed                     |
-| Rejected  | Booking was rejected                      |
+| Value     | Description                                   |
+| --------- | --------------------------------------------- |
+| Pending   | Booking created, awaits background processing |
+| Confirmed | Booking processed successfully                |
+| Rejected  | Event deleted or processing failed            |
 
 ### Date/Time Format
 
@@ -198,14 +191,6 @@ All date/time values must be provided in **UTC** using ISO 8601 format with the 
 ```
 
 Using the `Z` suffix ensures that both the client and server interpret the timestamp as UTC, avoiding timezone ambiguity.
-
-## Validation Rules
-
-- `title` is required
-- `startAt` is required
-- `endAt` is required and must be later than `startAt`
-- `totalSeats` is required and must be greater than zero
-- `description` is optional
 
 ## Error Responses
 
@@ -265,106 +250,47 @@ Errors are returned as Problem Details JSON.
 
 ## Background Processing
 
-Booking status transitions are handled by a background service that polls for pending bookings on a fixed schedule.
-
-### Processing Flow
-
-1. Every 2 minutes the service polls for bookings with `Pending` status
-2. Pending bookings are processed in parallel
-3. Each booking is processed simulating an external system call (30-second delay)
-4. If the associated event still exists, the booking transitions from `Pending` to `Confirmed`
-5. If the event was deleted, the booking transitions to `Rejected`
-6. On unexpected failure, the booking is rejected and the reserved seat is returned to the pool
-7. `ProcessedAt` is recorded at the time of the status change
-
-### Lifecycle
+Booking status transitions are handled by a background service that polls for pending bookings every 2 minutes:
 
 ```
 POST /events/{id}/book → Pending
-                            ↓
-                   Polling every 2 minutes
-                            ↓
-                Parallel processing (Task.WhenAll)
-                            ↓
-            External service call (30 s delay)
-                            ↓
-              ┌──────────────┴──────────────┐
-              ↓                               ↓
-         Event exists?                   Event deleted?
-              ↓                               ↓
-         Confirmed                        Rejected
+                             ↓
+                    Polling every 2 minutes
+                             ↓
+                 Parallel processing (Task.WhenAll)
+                             ↓
+             External service call (30 s delay)
+                             ↓
+               ┌──────────────┴──────────────┐
+               ↓                             ↓
+          Event exists?                 Event deleted?
+               ↓                             ↓
+          Confirmed                       Rejected
 ```
+
+On unexpected failure, the booking is rejected and the reserved seat is returned to the pool. `ProcessedAt` is recorded at the time of the status change.
 
 ## Concurrency and Synchronization
 
-The service uses the following mechanisms to prevent race conditions:
-
 ### `SemaphoreSlim` in BookingService
 
-`BookingService.CreateBookingAsync` uses a `SemaphoreSlim(1, 1)` to protect the atomic check-and-reserve sequence when working with EF Core. The critical section reads the event, decrements `AvailableSeats`, and persists both the updated event and the new booking in a single `SaveChangesAsync`:
-
-```
-await _semaphore.WaitAsync();
-try
-{
-    event = await context.Events.FindAsync(id);  // read
-    event.TryReserveSeats();                     // check + decrement
-    context.Bookings.Add(new Booking(...));      // create booking
-    await context.SaveChangesAsync();            // atomic write
-}
-finally
-{
-    _semaphore.Release();
-}
-```
-
-Without this synchronization, two concurrent requests could both read `AvailableSeats > 0`, both pass the check, and both create a booking — exceeding the seat limit.
+`BookingService.CreateBookingAsync` uses a `SemaphoreSlim(1, 1)` to protect the atomic check-and-reserve sequence: it reads the event, decrements `AvailableSeats`, and persists both the updated event and the new booking in a single `SaveChangesAsync`. Without this synchronization, two concurrent requests could both read `AvailableSeats > 0`, both pass the check, and both create a booking — exceeding the seat limit.
 
 ### Scoped DbContext in BookingProcessor
 
-`BookingProcessor` runs in the background and processes pending bookings in parallel. Each processing task creates a new `IServiceScope` via `IServiceScopeFactory.CreateAsyncScope()` and resolves its own `AppDbContext`. This is required because `DbContext` is not thread-safe and must not be shared across parallel operations.
-
-```
-await using var scope = scopeFactory.CreateAsyncScope();
-var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-var booking = await db.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId);
-```
+`BookingProcessor` runs in the background and processes pending bookings in parallel. Each processing task creates a new `IServiceScope` via `IServiceScopeFactory.CreateAsyncScope()` and resolves its own `AppDbContext`, because `DbContext` is not thread-safe and must not be shared across parallel operations.
 
 ## Overbooking Scenario
 
-When all seats for an event are taken, subsequent booking attempts return `409 Conflict`:
+When all seats for an event are taken, subsequent `POST /api/v1/events/{id}/book` requests return `409 Conflict` with the No Available Seats error (see [Error Responses](#error-responses)).
 
-### Request
-
-```http
-POST /api/v1/events/{id}/book
-```
-
-### Response (409 Conflict)
-
-```json
-{
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.10",
-  "title": "No Available Seats",
-  "status": 409,
-  "detail": "No available seats for this event.",
-  "traceId": "00-7d6f9f2e4f0b7c1c0f2e8b9d2f4a6c01-1b2c3d4e5f6a7b8c-00"
-}
-```
-
-### Example Flow
-
-1. Event is created with `totalSeats: 1`
-2. First `POST /events/{id}/book` succeeds → `202 Accepted`, `availableSeats` becomes 0
-3. Second `POST /events/{id}/book` fails → `409 Conflict` with `NoAvailableSeatsException`
-4. The background processor confirms the first booking; `availableSeats` stays 0
-5. Any further booking attempts continue to receive `409 Conflict`
+Example flow with `totalSeats: 1`:
+1. First booking succeeds → `202 Accepted`, `availableSeats` becomes 0
+2. The background processor confirms the booking; `availableSeats` stays 0
+3. Any further booking attempts receive `409 Conflict`
 
 ## Data Storage
 
-Event and booking data is stored in PostgreSQL and accessed through Entity Framework Core (`AppDbContext`).
+Event and booking data is stored in PostgreSQL and accessed through EF Core. `AppDbContext` and entity configurations live in the Infrastructure layer; Application services access them only through the `IUnitOfWork` abstraction defined in Application, keeping business logic decoupled from storage details.
 
-Filtering, pagination, and counting are implemented with `IQueryable` and executed by EF Core. `EventService` validates input, normalizes pagination parameters, builds the query, and maps results to DTOs. This keeps the service independent from storage details and allows efficient query execution at the database level.
-
-Unit tests use the EF Core InMemory provider instead of PostgreSQL so they can run without an external database and remain isolated from each other. Integration tests run against a real PostgreSQL instance provisioned by Testcontainers (requires Docker).
+Filtering, pagination, and counting use `IQueryable` and execute at the database level.
