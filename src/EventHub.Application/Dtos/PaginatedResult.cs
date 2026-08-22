@@ -1,4 +1,4 @@
-namespace EventHub.Application.Dto;
+namespace EventHub.Application.Dtos;
 
 public sealed record PaginatedResult<T>
 {

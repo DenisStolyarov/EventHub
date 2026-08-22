@@ -1,6 +1,6 @@
 using EventHub.Application.Abstractions.Persistence;
 using EventHub.Application.Abstractions.Services;
-using EventHub.Application.Dto.Bookings;
+using EventHub.Application.Dtos.Bookings;
 using EventHub.Application.Exceptions;
 using EventHub.Domain.Entities;
 

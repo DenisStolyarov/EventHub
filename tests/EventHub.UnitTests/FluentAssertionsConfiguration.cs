@@ -2,10 +2,10 @@ using FluentAssertions;
 using FluentAssertions.Extensibility;
 
 [assembly: AssertionEngineInitializer(
-    typeof(EventHub.Tests.FluentAssertionsConfiguration),
-    nameof(EventHub.Tests.FluentAssertionsConfiguration.Initialize))]
+    typeof(EventHub.UnitTests.FluentAssertionsConfiguration),
+    nameof(EventHub.UnitTests.FluentAssertionsConfiguration.Initialize))]
 
-namespace EventHub.Tests;
+namespace EventHub.UnitTests;
 
 internal static class FluentAssertionsConfiguration
 {

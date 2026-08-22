@@ -1,6 +1,6 @@
 using EventHub.Domain.Enums;
 
-namespace EventHub.Application.Dto.Bookings;
+namespace EventHub.Application.Dtos.Bookings;
 
 public sealed record BookingInfo
 {

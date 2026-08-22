@@ -3,7 +3,7 @@ using EventHub.Domain.Enums;
 using FluentAssertions;
 using Microsoft.Extensions.Time.Testing;
 
-namespace EventHub.Tests.Entities;
+namespace EventHub.UnitTests.Entities;
 
 public class BookingTests
 {

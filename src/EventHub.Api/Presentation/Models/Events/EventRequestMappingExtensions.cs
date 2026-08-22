@@ -1,6 +1,6 @@
-using EventHub.Application.Dto.Events;
+using EventHub.Application.Dtos.Events;
 
-namespace EventHub.Api.Presentation.Dto.Events;
+namespace EventHub.Api.Presentation.Models.Events;
 
 public static class EventRequestMappingExtensions
 {

@@ -1,18 +1,20 @@
-namespace EventHub.Application.Dto.Events;
+using System.ComponentModel.DataAnnotations;
 
-public sealed record EventDto
+namespace EventHub.Api.Presentation.Models.Events;
+
+public sealed record CreateEventRequest
 {
-    public required Guid Id { get; init; }
-
+    [Required]
     public required string Title { get; init; }
 
     public string? Description { get; init; }
 
+    [Required]
     public required int TotalSeats { get; init; }
 
-    public required int AvailableSeats { get; init; }
-
+    [Required]
     public required DateTimeOffset StartAt { get; init; }
 
+    [Required]
     public required DateTimeOffset EndAt { get; init; }
 }

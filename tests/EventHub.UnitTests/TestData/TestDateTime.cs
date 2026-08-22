@@ -1,4 +1,4 @@
-namespace EventHub.Tests.TestUtilities;
+namespace EventHub.UnitTests.TestData;
 
 internal static class TestDateTime
 {

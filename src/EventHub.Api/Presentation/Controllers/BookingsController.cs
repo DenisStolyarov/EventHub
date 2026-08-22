@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using EventHub.Application.Abstractions.Services;
-using EventHub.Application.Dto.Bookings;
+using EventHub.Application.Dtos.Bookings;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EventHub.Api.Presentation.Controllers;

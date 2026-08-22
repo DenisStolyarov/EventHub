@@ -1,9 +1,9 @@
 using Asp.Versioning;
-using EventHub.Api.Presentation.Dto.Events;
+using EventHub.Api.Presentation.Models.Events;
 using EventHub.Application.Abstractions.Services;
-using EventHub.Application.Dto;
-using EventHub.Application.Dto.Bookings;
-using EventHub.Application.Dto.Events;
+using EventHub.Application.Dtos;
+using EventHub.Application.Dtos.Bookings;
+using EventHub.Application.Dtos.Events;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EventHub.Api.Presentation.Controllers;

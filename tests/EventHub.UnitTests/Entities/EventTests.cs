@@ -3,9 +3,9 @@ using EventHub.Domain.Exceptions;
 using EventHub.Domain.ValueObjects;
 using FluentAssertions;
 
-using static EventHub.Tests.TestUtilities.TestDateTime;
+using static EventHub.UnitTests.TestData.TestDateTime;
 
-namespace EventHub.Tests.Entities;
+namespace EventHub.UnitTests.Entities;
 
 public class EventTests
 {

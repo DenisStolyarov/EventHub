@@ -1,5 +1,5 @@
-using EventHub.Application.Dto;
-using EventHub.Application.Dto.Events;
+using EventHub.Application.Dtos;
+using EventHub.Application.Dtos.Events;
 
 namespace EventHub.Application.Abstractions.Services;
 

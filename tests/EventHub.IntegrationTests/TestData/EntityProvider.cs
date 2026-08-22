@@ -1,7 +1,7 @@
 using EventHub.Domain.Entities;
 using EventHub.Domain.ValueObjects;
 
-namespace EventHub.IntegrationTests.Providers;
+namespace EventHub.IntegrationTests.TestData;
 
 public static class EntityProvider
 {

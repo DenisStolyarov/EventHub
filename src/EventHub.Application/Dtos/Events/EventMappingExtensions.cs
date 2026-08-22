@@ -1,6 +1,6 @@
 using EventHub.Domain.Entities;
 
-namespace EventHub.Application.Dto.Events;
+namespace EventHub.Application.Dtos.Events;
 
 public static class EventMappingExtensions
 {

@@ -1,6 +1,6 @@
 using EventHub.Domain.Entities;
 
-namespace EventHub.Application.Dto.Bookings;
+namespace EventHub.Application.Dtos.Bookings;
 
 public static class BookingMappingExtensions
 {

@@ -6,7 +6,7 @@ using EventHub.Domain.ValueObjects;
 using EventHub.Infrastructure.Persistence;
 using EventHub.IntegrationTests.Abstractions;
 using EventHub.IntegrationTests.Fixtures;
-using EventHub.IntegrationTests.Providers;
+using EventHub.IntegrationTests.TestData;
 using FluentAssertions;
 
 namespace EventHub.IntegrationTests.Repositories;

@@ -1,7 +1,7 @@
 using EventHub.Application.Abstractions.Persistence;
 using EventHub.Application.Abstractions.Services;
-using EventHub.Application.Dto.Bookings;
-using EventHub.Application.Dto.Events;
+using EventHub.Application.Dtos.Bookings;
+using EventHub.Application.Dtos.Events;
 using EventHub.Application.Exceptions;
 using EventHub.Application.Services;
 using EventHub.Domain.Entities;
@@ -10,9 +10,9 @@ using EventHub.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using static EventHub.Tests.TestUtilities.TestDateTime;
+using static EventHub.UnitTests.TestData.TestDateTime;
 
-namespace EventHub.Tests.Services;
+namespace EventHub.UnitTests.Services;
 
 public sealed class BookingServiceTests : IDisposable
 {

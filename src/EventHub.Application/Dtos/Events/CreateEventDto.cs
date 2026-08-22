@@ -1,4 +1,4 @@
-namespace EventHub.Application.Dto.Events;
+namespace EventHub.Application.Dtos.Events;
 
 public sealed record CreateEventDto
 {

@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace EventHub.Api.Infrastructure.DataAccess.Migrations;
+namespace EventHub.Infrastructure.Persistence.Migrations;
 
 /// <inheritdoc />
 public partial class InitialCreate : Migration

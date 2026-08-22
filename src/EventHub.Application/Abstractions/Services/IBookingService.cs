@@ -1,4 +1,4 @@
-using EventHub.Application.Dto.Bookings;
+using EventHub.Application.Dtos.Bookings;
 
 namespace EventHub.Application.Abstractions.Services;
 
