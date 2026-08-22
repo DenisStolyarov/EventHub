@@ -51,6 +51,10 @@ dotnet_diagnostic.IDE0130.severity = error
 dotnet_diagnostic.S3928.severity = suggestion
 dotnet_diagnostic.CA2208.severity = suggestion
 dotnet_diagnostic.IDE0059.severity = warning
+dotnet_diagnostic.CA1062.severity = suggestion
+dotnet_diagnostic.CA1716.severity = suggestion
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1724.severity = none
 dotnet_separate_import_directive_groups = false
 dotnet_style_parentheses_in_arithmetic_binary_operators = never_if_unnecessary:none
 dotnet_style_parentheses_in_other_binary_operators = always_for_clarity:none
@@ -135,6 +139,9 @@ dotnet_naming_symbols.async_method_with_async_suffix_symbols.resharper_required_
 [{*Controller.cs,*controller.cs,*test*.cs,*Test*.cs}]
 dotnet_diagnostic.VSTHRD200.severity = none
 dotnet_naming_rule.async_method_with_async_suffix_rule.severity = none
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1806.severity = none
 
 [{*.csproj,*.har,*.jsb2,*.jsb3,*.json,*.jsonc,*.postman_collection,*.postman_collection.json,*.postman_environment,*.postman_environment.json,.babelrc,.eslintrc,.prettierrc,.stylelintrc,bowerrc,jest.config}]
 indent_style = space

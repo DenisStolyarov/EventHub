@@ -9,8 +9,8 @@ namespace EventHub.Infrastructure.BackgroundServices;
 
 public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<BookingProcessor> logger) : BackgroundService
 {
-    private readonly TimeSpan PollingInterval = TimeSpan.FromSeconds(5);
-    private readonly TimeSpan ProcessingDelay = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan PollingInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ProcessingDelay = TimeSpan.FromSeconds(2);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

@@ -7,7 +7,7 @@ using FluentAssertions.Extensibility;
 
 namespace EventHub.Tests;
 
-public static class FluentAssertionsConfiguration
+internal static class FluentAssertionsConfiguration
 {
     public static void Initialize() =>
         AssertionConfiguration.Current.Equivalency.Modify(options => options.ExcludingMissingMembers());

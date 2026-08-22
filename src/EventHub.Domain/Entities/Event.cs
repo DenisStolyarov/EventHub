@@ -5,6 +5,8 @@ namespace EventHub.Domain.Entities;
 
 public class Event
 {
+    private readonly List<Booking> _bookings = [];
+
     public Guid Id { get; }
 
     public string? Description { get; private set; }
@@ -15,7 +17,7 @@ public class Event
 
     public int AvailableSeats { get; private set; }
 
-    public List<Booking> Bookings { get; private set; } = [];
+    public IReadOnlyList<Booking> Bookings => _bookings;
 
     public string Title
     {

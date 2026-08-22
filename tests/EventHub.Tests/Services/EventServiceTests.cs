@@ -16,7 +16,7 @@ using static EventHub.Tests.TestUtilities.TestDateTime;
 
 namespace EventHub.Tests.Services;
 
-public class EventServiceTests : IDisposable
+public sealed class EventServiceTests : IDisposable
 {
     private readonly ServiceProvider _serviceProvider;
     private readonly IServiceScope _serviceScope;
@@ -42,6 +42,7 @@ public class EventServiceTests : IDisposable
 
     public void Dispose()
     {
+        _dbContext.Dispose();
         _serviceScope.Dispose();
         _serviceProvider.Dispose();
     }
