@@ -152,7 +152,7 @@ public class BookingRepositoryTests(IntegrationTestFixture fixture) : Repository
         ICollection<Guid> result = await uow.Bookings.GetPendingBookingIdsAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().ContainSingle(id => id == pending.Id);
+        result.Should().BeEquivalentTo([pending.Id]);
     }
 
     [Fact]
