@@ -1,10 +1,10 @@
-using EventHub.Api.Domain.Entities;
-using EventHub.Api.Domain.Enums;
-using EventHub.Api.Domain.Interfaces;
-using EventHub.Api.Infrastructure.DataAccess;
+using EventHub.Application.Abstractions.Persistence;
+using EventHub.Domain.Entities;
+using EventHub.Domain.Enums;
+using EventHub.Infrastructure.Persistence;
 using EventHub.IntegrationTests.Abstractions;
 using EventHub.IntegrationTests.Fixtures;
-using EventHub.IntegrationTests.Providers;
+using EventHub.IntegrationTests.TestData;
 using FluentAssertions;
 
 namespace EventHub.IntegrationTests.Repositories;
@@ -152,7 +152,7 @@ public class BookingRepositoryTests(IntegrationTestFixture fixture) : Repository
         ICollection<Guid> result = await uow.Bookings.GetPendingBookingIdsAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().ContainSingle(id => id == pending.Id);
+        result.Should().BeEquivalentTo([pending.Id]);
     }
 
     [Fact]

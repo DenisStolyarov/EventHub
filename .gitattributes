@@ -1,0 +1,88 @@
+# Default: auto-detect text files and normalize line endings to LF
+* text=auto eol=lf
+
+# .NET / C# source files
+*.cs       text eol=lf diff=csharp
+*.csx      text eol=lf diff=csharp
+*.razor    text eol=lf diff=html
+*.cshtml   text eol=lf diff=html
+*.resx     text eol=lf diff=xml
+
+# Project & solution files
+*.sln      text eol=crlf
+*.slnx     text eol=lf diff=xml
+*.csproj   text eol=lf
+*.vbproj   text eol=lf
+*.fsproj   text eol=lf
+*.props    text eol=lf
+*.targets  text eol=lf
+*.proj     text eol=lf
+*.ruleset  text eol=lf
+
+# Config files
+*.md       text eol=lf
+*.json     text eol=lf
+*.jsonc    text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+*.config   text eol=lf
+*.editorconfig text eol=lf
+.dockerignore text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+Dockerfile text eol=lf
+
+# Scripts
+*.sh       text eol=lf
+*.ps1      text eol=lf
+*.cmd      text eol=crlf
+*.bat      text eol=crlf
+
+# Frontend
+*.ts       text eol=lf diff=typescript
+*.tsx      text eol=lf
+*.js       text eol=lf
+*.jsx      text eol=lf
+*.css      text eol=lf
+*.scss     text eol=lf
+*.html     text eol=lf
+
+# Database / SQL
+*.sql      text eol=lf
+
+# Build / CI
+*.cake     text eol=lf
+*.build    text eol=lf
+
+# Text assets
+*.svg      text eol=lf diff=xml
+
+# Binary assets
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.gif      binary
+*.bmp      binary
+*.ico      binary
+*.pdf      binary
+*.zip      binary
+*.nupkg    binary
+*.snupkg   binary
+*.dll      binary
+*.exe      binary
+*.pdb      binary
+*.so       binary
+*.dylib    binary
+*.snk      binary
+*.pfx      binary
+*.key      binary
+*.woff     binary
+*.woff2    binary
+*.ttf      binary
+*.eot      binary
+*.user     binary
+*.suo      binary
+
+# Generated files
+*.lock     text eol=lf
+*.log      text eol=lf

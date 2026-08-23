@@ -1,6 +1,6 @@
-using EventHub.Api.Application;
-using EventHub.Api.Infrastructure;
 using EventHub.Api.Presentation;
+using EventHub.Application;
+using EventHub.Infrastructure;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 

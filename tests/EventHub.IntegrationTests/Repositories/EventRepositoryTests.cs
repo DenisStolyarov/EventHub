@@ -1,12 +1,12 @@
-using EventHub.Api.Domain.Common;
-using EventHub.Api.Domain.Entities;
-using EventHub.Api.Domain.Filters;
-using EventHub.Api.Domain.Interfaces;
-using EventHub.Api.Domain.ValueObjects;
-using EventHub.Api.Infrastructure.DataAccess;
+using EventHub.Application.Abstractions.Persistence;
+using EventHub.Application.Common;
+using EventHub.Application.Filters;
+using EventHub.Domain.Entities;
+using EventHub.Domain.ValueObjects;
+using EventHub.Infrastructure.Persistence;
 using EventHub.IntegrationTests.Abstractions;
 using EventHub.IntegrationTests.Fixtures;
-using EventHub.IntegrationTests.Providers;
+using EventHub.IntegrationTests.TestData;
 using FluentAssertions;
 
 namespace EventHub.IntegrationTests.Repositories;
