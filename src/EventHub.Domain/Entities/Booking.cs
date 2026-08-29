@@ -46,6 +46,8 @@ public class Booking
 
     public void Confirm(TimeProvider? timeProvider = null)
     {
+        EnsureActive();
+
         TimeProvider tp = timeProvider ?? TimeProvider.System;
 
         Status = BookingStatus.Confirmed;
@@ -54,9 +56,26 @@ public class Booking
 
     public void Reject(TimeProvider? timeProvider = null)
     {
+        EnsureActive();
+
         TimeProvider tp = timeProvider ?? TimeProvider.System;
 
         Status = BookingStatus.Rejected;
         ProcessedAt = tp.GetUtcNow().UtcDateTime;
+    }
+
+    public void Cancel()
+    {
+        EnsureActive();
+
+        Status = BookingStatus.Cancelled;
+    }
+
+    private void EnsureActive()
+    {
+        if (Status is BookingStatus.Cancelled)
+        {
+            throw new DomainException("Booking is cancelled.");
+        }
     }
 }
