@@ -9,6 +9,8 @@ public class Booking
 
     public Guid EventId { get; }
 
+    public Guid UserId { get; }
+
     public BookingStatus Status { get; private set; }
 
     public DateTime CreatedAt { get; }
@@ -17,19 +19,27 @@ public class Booking
 
     public Event Event { get; private set; } = null!;
 
+    public User User { get; private set; } = null!;
+
     private Booking() { }
 
-    public Booking(Guid id, Guid eventId, TimeProvider? timeProvider = null)
+    public Booking(Guid id, Guid eventId, Guid userId, TimeProvider? timeProvider = null)
     {
         if (eventId == Guid.Empty)
         {
             throw new ValidationException(nameof(EventId), "EventId cannot be empty.");
         }
 
+        if (userId == Guid.Empty)
+        {
+            throw new ValidationException(nameof(UserId), "UserId cannot be empty.");
+        }
+
         TimeProvider tp = timeProvider ?? TimeProvider.System;
 
         Id = id;
         EventId = eventId;
+        UserId = userId;
         Status = BookingStatus.Pending;
         CreatedAt = tp.GetUtcNow().UtcDateTime;
     }
