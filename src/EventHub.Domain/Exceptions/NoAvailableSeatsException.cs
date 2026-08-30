@@ -1,4 +1,4 @@
-namespace EventHub.Application.Exceptions;
+namespace EventHub.Domain.Exceptions;
 
 public class NoAvailableSeatsException : Exception
 {

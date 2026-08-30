@@ -73,6 +73,38 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                 Type = TypeUri(StatusCodes.Status409Conflict),
             },
 
+            EventAlreadyStartedException ex => new ProblemDetails
+            {
+                Title = "Event Already Started",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest,
+                Type = TypeUri(StatusCodes.Status400BadRequest),
+            },
+
+            MaxActiveBookingsExceededException ex => new ProblemDetails
+            {
+                Title = "Active Bookings Limit Exceeded",
+                Detail = ex.Message,
+                Status = StatusCodes.Status409Conflict,
+                Type = TypeUri(StatusCodes.Status409Conflict),
+            },
+
+            ForbiddenException ex => new ProblemDetails
+            {
+                Title = "Forbidden",
+                Detail = ex.Message,
+                Status = StatusCodes.Status403Forbidden,
+                Type = TypeUri(StatusCodes.Status403Forbidden),
+            },
+
+            UnauthorizedException ex => new ProblemDetails
+            {
+                Title = "Unauthorized",
+                Detail = ex.Message,
+                Status = StatusCodes.Status401Unauthorized,
+                Type = TypeUri(StatusCodes.Status401Unauthorized),
+            },
+
             DomainException ex => new ProblemDetails
             {
                 Title = "Domain Rule Violation",
@@ -100,6 +132,8 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         StatusCodes.Status400BadRequest => "https://tools.ietf.org/html/rfc9110#section-15.5.1",
         StatusCodes.Status404NotFound => "https://tools.ietf.org/html/rfc9110#section-15.5.5",
         StatusCodes.Status409Conflict => "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+        StatusCodes.Status403Forbidden => "https://tools.ietf.org/html/rfc9110#section-15.5.4",
+        StatusCodes.Status401Unauthorized => "https://tools.ietf.org/html/rfc9110#section-15.5.2",
         StatusCodes.Status422UnprocessableEntity => "https://tools.ietf.org/html/rfc9110#section-15.5.21",
         StatusCodes.Status500InternalServerError => "https://tools.ietf.org/html/rfc9110#section-15.6.1",
         _ => $"https://tools.ietf.org/html/rfc9110#section-15.6",

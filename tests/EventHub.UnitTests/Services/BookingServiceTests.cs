@@ -6,6 +6,7 @@ using EventHub.Application.Exceptions;
 using EventHub.Application.Services;
 using EventHub.Domain.Entities;
 using EventHub.Domain.Enums;
+using EventHub.Domain.Exceptions;
 using EventHub.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
