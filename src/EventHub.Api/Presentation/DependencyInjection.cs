@@ -2,6 +2,7 @@ using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
 using EventHub.Api.Presentation.Configurations;
 using EventHub.Api.Presentation.ExceptionHandlers;
+using EventHub.Infrastructure.Identity;
 
 namespace EventHub.Api.Presentation;
 
@@ -17,6 +18,9 @@ public static class DependencyInjection
         services.AddExceptionHandler<GlobalExceptionHandler>();
 
         services.ConfigureOptions<SwaggerConfiguration>();
+        services.AddOptionsWithValidateOnStart<JwtOptions>(JwtOptions.SectionName)
+            .ValidateDataAnnotations()
+            .BindConfiguration(JwtOptions.SectionName);
 
         services.AddApiVersioning(options =>
         {

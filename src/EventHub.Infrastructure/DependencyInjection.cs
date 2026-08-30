@@ -18,6 +18,7 @@ public static class DependencyInjection
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+        services.AddSingleton<ITokenGenerator, JwtTokenGenerator>();
         services.AddSingleton<IPasswordHasher, Sha256PasswordHasher>();
 
         services.AddHostedService<BookingProcessor>();
