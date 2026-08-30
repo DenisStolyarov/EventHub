@@ -13,16 +13,18 @@ public class BookingTests
         // Arrange
         Guid id = Guid.NewGuid();
         Guid eventId = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
         DateTimeOffset now = new(2026, 6, 1, 10, 0, 0, TimeSpan.Zero);
         FakeTimeProvider timeProvider = new(now);
         DateTime expectedCreatedAt = new(2026, 6, 1, 10, 0, 0, DateTimeKind.Utc);
 
         // Act
-        Booking booking = new(id, eventId, timeProvider);
+        Booking booking = new(id, eventId, userId, timeProvider);
 
         // Assert
         booking.Id.Should().Be(id);
         booking.EventId.Should().Be(eventId);
+        booking.UserId.Should().Be(userId);
         booking.Status.Should().Be(BookingStatus.Pending);
         booking.ProcessedAt.Should().BeNull();
         booking.CreatedAt.Should().Be(expectedCreatedAt);
@@ -34,7 +36,7 @@ public class BookingTests
         // Arrange
         DateTimeOffset now = new(2026, 6, 1, 10, 0, 0, TimeSpan.Zero);
         FakeTimeProvider timeProvider = new(now);
-        Booking booking = new(Guid.NewGuid(), Guid.NewGuid(), timeProvider);
+        Booking booking = new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), timeProvider);
         DateTime expectedProcessedAt = new(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc);
 
         // Act
@@ -53,7 +55,7 @@ public class BookingTests
         // Arrange
         DateTimeOffset now = new(2026, 6, 1, 10, 0, 0, TimeSpan.Zero);
         FakeTimeProvider timeProvider = new(now);
-        Booking booking = new(Guid.NewGuid(), Guid.NewGuid(), timeProvider);
+        Booking booking = new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), timeProvider);
         DateTime expectedProcessedAt = new(2026, 6, 1, 13, 0, 0, DateTimeKind.Utc);
 
         // Act

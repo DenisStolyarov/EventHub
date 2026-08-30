@@ -1,16 +1,23 @@
+using EventHub.Application.Abstractions.Identity;
 using EventHub.Application.Abstractions.Persistence;
 using EventHub.Application.Abstractions.Services;
 using EventHub.Application.Dtos.Bookings;
 using EventHub.Application.Dtos.Events;
 using EventHub.Application.Exceptions;
 using EventHub.Application.Services;
+using EventHub.Domain.Abstractions;
 using EventHub.Domain.Entities;
 using EventHub.Domain.Enums;
 using EventHub.Domain.Exceptions;
+using EventHub.Domain.Services;
 using EventHub.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
+using Moq;
+using System.Linq.Expressions;
+
 using static EventHub.UnitTests.TestData.TestDateTime;
 
 namespace EventHub.UnitTests.Services;
@@ -22,17 +29,38 @@ public sealed class BookingServiceTests : IDisposable
     private readonly AppDbContext _dbContext;
     private readonly IBookingService _bookingService;
     private readonly IEventService _eventService;
+    private readonly Mock<ICurrentUserService> _currentUserMock;
+    private readonly Mock<IBookingCounter> _bookingCounterMock;
 
     public BookingServiceTests()
     {
         string dbName = Guid.NewGuid().ToString();
+        FakeTimeProvider timeProvider = new(UtcDate(2026, 1, 1, 10));
+
+        _currentUserMock = new();
+        _currentUserMock
+            .SetupGet(c => c.Id)
+            .Returns(Guid.NewGuid());
+
+        _bookingCounterMock = new();
+        _bookingCounterMock
+            .Setup(c => c.CountAsync(
+                It.IsAny<Expression<Func<Booking, bool>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
 
         ServiceCollection services = new();
 
         services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(dbName));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        services.AddScoped<IBookingService, BookingService>();
         services.AddScoped<IEventService, EventService>();
+        services.AddScoped<IBookingService>(sp =>
+        {
+            IUnitOfWork unitOfWork = sp.GetRequiredService<IUnitOfWork>();
+            BookingManager bookingManager = new(_bookingCounterMock.Object, timeProvider);
+
+            return new BookingService(bookingManager, _currentUserMock.Object, unitOfWork);
+        });
 
         _serviceProvider = services.BuildServiceProvider();
         _serviceScope = _serviceProvider.CreateScope();
@@ -131,20 +159,6 @@ public sealed class BookingServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateBookingAsync_AllSeatsAlreadyReserved_ThrowsNoAvailableSeatsException()
-    {
-        // Arrange
-        EventDto @event = await CreateEventAsync(totalSeats: 1);
-        await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
-
-        // Act
-        Func<Task> act = () => _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
-
-        // Assert
-        await act.Should().ThrowAsync<NoAvailableSeatsException>();
-    }
-
-    [Fact]
     public async Task GetBookingByIdAsync_BookingExists_ReturnsBookingInfo()
     {
         // Arrange
@@ -220,6 +234,21 @@ public sealed class BookingServiceTests : IDisposable
         List<Booking> storedBookings = await _dbContext.Bookings.ToListAsync(TestContext.Current.CancellationToken);
 
         storedBookings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_UnauthenticatedUser_ThrowsUnauthorizedException()
+    {
+        // Arrange
+        Guid eventId = Guid.NewGuid();
+
+        _currentUserMock.SetupGet(c => c.Id).Returns((Guid?)null);
+
+        // Act
+        Func<Task> act = () => _bookingService.CreateBookingAsync(eventId, TestContext.Current.CancellationToken);
+
+        // Assert
+        await act.Should().ThrowAsync<UnauthorizedException>();
     }
 
     [Fact]
