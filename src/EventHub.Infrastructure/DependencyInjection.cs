@@ -1,5 +1,7 @@
+using EventHub.Application.Abstractions.Identity;
 using EventHub.Application.Abstractions.Persistence;
 using EventHub.Infrastructure.BackgroundServices;
+using EventHub.Infrastructure.Identity;
 using EventHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -15,6 +17,8 @@ public static class DependencyInjection
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        services.AddSingleton<IPasswordHasher, Sha256PasswordHasher>();
 
         services.AddHostedService<BookingProcessor>();
 
