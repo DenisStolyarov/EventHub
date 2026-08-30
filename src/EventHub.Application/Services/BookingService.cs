@@ -1,12 +1,14 @@
+using EventHub.Application.Abstractions.Identity;
 using EventHub.Application.Abstractions.Persistence;
 using EventHub.Application.Abstractions.Services;
 using EventHub.Application.Dtos.Bookings;
 using EventHub.Application.Exceptions;
 using EventHub.Domain.Entities;
+using EventHub.Domain.Services;
 
 namespace EventHub.Application.Services;
 
-public sealed class BookingService(IUnitOfWork unitOfWork) : IBookingService
+public sealed class BookingService(BookingManager bookingManager, ICurrentUserService currentUser, IUnitOfWork unitOfWork) : IBookingService
 {
     private static readonly SemaphoreSlim _semaphore = new(1, 1);
 
@@ -16,15 +18,12 @@ public sealed class BookingService(IUnitOfWork unitOfWork) : IBookingService
 
         try
         {
+            Guid userId = currentUser.Id ?? throw new UnauthorizedException();
+
             Event @event = await unitOfWork.Events.GetByIdAsync(eventId, cancellationToken)
                 ?? throw new NotFoundException(nameof(Event), eventId);
 
-            if (!@event.TryReserveSeats())
-            {
-                throw new NoAvailableSeatsException();
-            }
-
-            Booking booking = new(Guid.CreateVersion7(), eventId);
+            Booking booking = await bookingManager.CreateAsync(@event, userId, cancellationToken);
 
             unitOfWork.Bookings.Add(booking);
 

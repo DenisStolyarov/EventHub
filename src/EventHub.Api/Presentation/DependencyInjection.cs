@@ -13,6 +13,7 @@ public static class DependencyInjection
         services.AddControllers();
         services.AddProblemDetails();
         services.AddSwaggerGen();
+        services.AddHttpContextAccessor();
         services.AddEndpointsApiExplorer();
 
         services.AddExceptionHandler<GlobalExceptionHandler>();

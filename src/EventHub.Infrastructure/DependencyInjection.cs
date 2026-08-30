@@ -1,8 +1,11 @@
 using EventHub.Application.Abstractions.Identity;
 using EventHub.Application.Abstractions.Persistence;
+using EventHub.Domain.Abstractions;
 using EventHub.Infrastructure.BackgroundServices;
 using EventHub.Infrastructure.Identity;
 using EventHub.Infrastructure.Persistence;
+using EventHub.Infrastructure.Persistence.Repositories;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +20,8 @@ public static class DependencyInjection
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IBookingCounter, BookingRepository>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         services.AddSingleton<ITokenGenerator, JwtTokenGenerator>();
         services.AddSingleton<IPasswordHasher, Sha256PasswordHasher>();

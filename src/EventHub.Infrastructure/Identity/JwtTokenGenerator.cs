@@ -8,17 +8,15 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace EventHub.Infrastructure.Identity;
 
-public sealed class JwtTokenGenerator(IOptions<JwtOptions> options) : ITokenGenerator
+public sealed class JwtTokenGenerator(IOptions<JwtOptions> options, TimeProvider timeProvider) : ITokenGenerator
 {
     private JwtOptions Options { get; } = options.Value;
 
-    public string GenerateToken(User user, TimeProvider? timeProvider = null)
+    public string GenerateToken(User user)
     {
         ArgumentNullException.ThrowIfNull(user);
 
-        TimeProvider tp = timeProvider ?? TimeProvider.System;
-
-        DateTime expires = tp.GetUtcNow().UtcDateTime.AddMinutes(Options.ExpiryMinutes);
+        DateTime expires = timeProvider.GetUtcNow().UtcDateTime.AddMinutes(Options.ExpiryMinutes);
 
         List<Claim> claims = [
             new (ClaimTypes.Name, user.Login),

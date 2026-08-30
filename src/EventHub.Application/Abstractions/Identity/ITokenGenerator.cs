@@ -4,5 +4,5 @@ namespace EventHub.Application.Abstractions.Identity;
 
 public interface ITokenGenerator
 {
-    string GenerateToken(User user, TimeProvider? timeProvider = null);
+    string GenerateToken(User user);
 }
