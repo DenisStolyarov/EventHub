@@ -6,6 +6,8 @@ using EventHub.Application.Exceptions;
 using EventHub.Domain.Entities;
 using EventHub.Domain.Services;
 
+using static EventHub.Application.Constants.UserRoles;
+
 namespace EventHub.Application.Services;
 
 public sealed class BookingService(BookingManager bookingManager, ICurrentUserService currentUser, IUnitOfWork unitOfWork) : IBookingService
@@ -37,11 +39,48 @@ public sealed class BookingService(BookingManager bookingManager, ICurrentUserSe
         }
     }
 
+    public async Task<BookingInfo> CancelBookingAsync(Guid bookingId, CancellationToken cancellationToken = default)
+    {
+        Booking booking = await unitOfWork.Bookings.GetByIdAsync(bookingId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Booking), bookingId);
+
+        EnsureCanCancel(booking);
+
+        booking.Cancel();
+
+        Event @event = await unitOfWork.Events.GetByIdAsync(booking.EventId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Event), booking.EventId);
+
+        @event.ReleaseSeats();
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return booking.ToInfo();
+    }
+
     public async Task<BookingInfo> GetBookingByIdAsync(Guid bookingId, CancellationToken cancellationToken = default)
     {
         Booking booking = await unitOfWork.Bookings.GetByIdAsync(bookingId, cancellationToken)
             ?? throw new NotFoundException(nameof(Booking), bookingId);
 
         return booking.ToInfo();
+    }
+
+    private void EnsureCanCancel(Booking booking)
+    {
+        if (currentUser.IsInRole(Admin))
+        {
+            return;
+        }
+
+        if (currentUser.Id is not Guid userId)
+        {
+            throw new UnauthorizedException();
+        }
+
+        if (booking.UserId != userId)
+        {
+            throw new ForbiddenException();
+        }
     }
 }

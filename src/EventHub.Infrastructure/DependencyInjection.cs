@@ -5,7 +5,6 @@ using EventHub.Infrastructure.BackgroundServices;
 using EventHub.Infrastructure.Identity;
 using EventHub.Infrastructure.Persistence;
 using EventHub.Infrastructure.Persistence.Repositories;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

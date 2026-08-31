@@ -1,6 +1,5 @@
 using EventHub.Application.Abstractions.Persistence;
 using EventHub.Application.Abstractions.Services;
-using EventHub.Application.Common;
 using EventHub.Application.Constants;
 using EventHub.Application.Dtos;
 using EventHub.Application.Dtos.Events;
