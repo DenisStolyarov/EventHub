@@ -92,7 +92,7 @@ public class BookingRepositoryTests(IntegrationTestFixture fixture) : Repository
         Booking tracked = (await uow.Bookings.GetByIdAsync(booking.Id, TestContext.Current.CancellationToken))!;
 
         // Act
-        tracked.Confirm();
+        tracked.Confirm(DateTime.UtcNow);
 
         await uow.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -138,8 +138,8 @@ public class BookingRepositoryTests(IntegrationTestFixture fixture) : Repository
         Booking confirmed = EntityProvider.CreateBooking(@event.Id);
         Booking rejected = EntityProvider.CreateBooking(@event.Id);
 
-        confirmed.Confirm();
-        rejected.Reject();
+        confirmed.Confirm(DateTime.UtcNow);
+        rejected.Reject(DateTime.UtcNow);
 
         await using AppDbContext ctx = Fixture.CreateContext();
         await using IUnitOfWork uow = Fixture.Create<IUnitOfWork>();
@@ -162,7 +162,7 @@ public class BookingRepositoryTests(IntegrationTestFixture fixture) : Repository
         Event @event = EntityProvider.CreateEvent(totalSeats: 10);
         Booking confirmed = EntityProvider.CreateBooking(@event.Id);
 
-        confirmed.Confirm();
+        confirmed.Confirm(DateTime.UtcNow);
 
         await using AppDbContext ctx = Fixture.CreateContext();
         await using IUnitOfWork uow = Fixture.Create<IUnitOfWork>();

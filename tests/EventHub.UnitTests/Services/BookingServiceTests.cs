@@ -31,11 +31,11 @@ public sealed class BookingServiceTests : IDisposable
     private readonly IEventService _eventService;
     private readonly Mock<ICurrentUserService> _currentUserMock;
     private readonly Mock<IBookingCounter> _bookingCounterMock;
+    private readonly FakeTimeProvider _timeProvider = new(UtcDate(2026, 1, 1, 10));
 
     public BookingServiceTests()
     {
         string dbName = Guid.NewGuid().ToString();
-        FakeTimeProvider timeProvider = new(UtcDate(2026, 1, 1, 10));
 
         _currentUserMock = new();
         _currentUserMock
@@ -57,7 +57,7 @@ public sealed class BookingServiceTests : IDisposable
         services.AddScoped<IBookingService>(sp =>
         {
             IUnitOfWork unitOfWork = sp.GetRequiredService<IUnitOfWork>();
-            BookingManager bookingManager = new(_bookingCounterMock.Object, timeProvider);
+            BookingManager bookingManager = new(_bookingCounterMock.Object, _timeProvider);
 
             return new BookingService(bookingManager, _currentUserMock.Object, unitOfWork);
         });
@@ -186,7 +186,7 @@ public sealed class BookingServiceTests : IDisposable
         Booking? booking = await _dbContext.Bookings.FindAsync([created.Id], TestContext.Current.CancellationToken);
 
         booking.Should().NotBeNull();
-        booking.Confirm();
+        booking.Confirm(_timeProvider.GetUtcNow().UtcDateTime);
 
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -206,7 +206,7 @@ public sealed class BookingServiceTests : IDisposable
         Booking? booking = await _dbContext.Bookings.FindAsync([created.Id], TestContext.Current.CancellationToken);
 
         booking.Should().NotBeNull();
-        booking.Reject();
+        booking.Reject(_timeProvider.GetUtcNow().UtcDateTime);
 
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 

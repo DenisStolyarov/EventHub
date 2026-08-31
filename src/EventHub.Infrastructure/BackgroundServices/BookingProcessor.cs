@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EventHub.Infrastructure.BackgroundServices;
 
-public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<BookingProcessor> logger) : BackgroundService
+public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<BookingProcessor> logger, TimeProvider timeProvider) : BackgroundService
 {
     private static readonly TimeSpan PollingInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan ProcessingDelay = TimeSpan.FromSeconds(2);
@@ -79,7 +79,7 @@ public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<
 
             if (@event is null)
             {
-                booking.Reject();
+                booking.Reject(timeProvider.GetUtcNow().UtcDateTime);
 
                 await unitOfWork.SaveChangesAsync(stoppingToken);
 
@@ -88,7 +88,7 @@ public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<
                 return;
             }
 
-            booking.Confirm();
+            booking.Confirm(timeProvider.GetUtcNow().UtcDateTime);
 
             await unitOfWork.SaveChangesAsync(stoppingToken);
 
@@ -109,7 +109,7 @@ public sealed class BookingProcessor(IServiceScopeFactory scopeFactory, ILogger<
 
                 if (booking is not null)
                 {
-                    booking.Reject();
+                    booking.Reject(timeProvider.GetUtcNow().UtcDateTime);
 
                     Event? @event = await unitOfWork.Events.GetByIdAsync(booking.EventId, stoppingToken);
 

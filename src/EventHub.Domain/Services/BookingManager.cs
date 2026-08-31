@@ -36,7 +36,7 @@ public sealed class BookingManager(IBookingCounter bookingCounter, TimeProvider 
             throw new NoAvailableSeatsException();
         }
 
-        Booking booking = new(Guid.CreateVersion7(), @event.Id, userId, timeProvider);
+        Booking booking = new(Guid.CreateVersion7(), @event.Id, userId, now);
 
         return booking;
     }

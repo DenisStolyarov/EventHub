@@ -23,7 +23,7 @@ public class Booking
 
     private Booking() { }
 
-    public Booking(Guid id, Guid eventId, Guid userId, TimeProvider? timeProvider = null)
+    internal Booking(Guid id, Guid eventId, Guid userId, DateTime createdAt)
     {
         if (eventId == Guid.Empty)
         {
@@ -35,33 +35,27 @@ public class Booking
             throw new ValidationException(nameof(UserId), "UserId cannot be empty.");
         }
 
-        TimeProvider tp = timeProvider ?? TimeProvider.System;
-
         Id = id;
         EventId = eventId;
         UserId = userId;
         Status = BookingStatus.Pending;
-        CreatedAt = tp.GetUtcNow().UtcDateTime;
+        CreatedAt = createdAt;
     }
 
-    public void Confirm(TimeProvider? timeProvider = null)
+    public void Confirm(DateTime processedAt)
     {
         EnsureActive();
-
-        TimeProvider tp = timeProvider ?? TimeProvider.System;
 
         Status = BookingStatus.Confirmed;
-        ProcessedAt = tp.GetUtcNow().UtcDateTime;
+        ProcessedAt = processedAt;
     }
 
-    public void Reject(TimeProvider? timeProvider = null)
+    public void Reject(DateTime processedAt)
     {
         EnsureActive();
 
-        TimeProvider tp = timeProvider ?? TimeProvider.System;
-
         Status = BookingStatus.Rejected;
-        ProcessedAt = tp.GetUtcNow().UtcDateTime;
+        ProcessedAt = processedAt;
     }
 
     public void Cancel()
