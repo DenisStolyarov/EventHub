@@ -5,13 +5,9 @@ namespace EventHub.Domain.Entities;
 
 public class User
 {
-    private readonly List<Booking> _bookings = [];
-
     public Guid Id { get; private set; }
 
     public UserRole Role { get; private set; }
-
-    public IReadOnlyList<Booking> Bookings => _bookings;
 
     public string Login
     {
