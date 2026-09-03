@@ -6,5 +6,5 @@ public interface IUserService
 {
     Task<TokenDto> Login(LoginUserDto dto, CancellationToken cancellationToken = default);
 
-    Task<TokenDto> Register(RegisterUserDto dto, CancellationToken cancellationToken = default);
+    Task Register(RegisterUserDto dto, CancellationToken cancellationToken = default);
 }

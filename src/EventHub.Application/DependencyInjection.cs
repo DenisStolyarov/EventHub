@@ -11,9 +11,11 @@ public static class DependencyInjection
     {
         services.AddSingleton(TimeProvider.System);
 
-        services.AddScoped<BookingManager>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IBookingService, BookingService>();
+        services.AddScoped<IUserService, UserService>();
+
+        services.AddTransient<BookingManager>();
 
         return services;
     }

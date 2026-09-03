@@ -89,6 +89,14 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                 Type = TypeUri(StatusCodes.Status409Conflict),
             },
 
+            UserAlreadyExistsException ex => new ProblemDetails
+            {
+                Title = "User Already Exists",
+                Detail = ex.Message,
+                Status = StatusCodes.Status409Conflict,
+                Type = TypeUri(StatusCodes.Status409Conflict),
+            },
+
             ForbiddenException ex => new ProblemDetails
             {
                 Title = "Forbidden",
