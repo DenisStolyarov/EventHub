@@ -44,7 +44,7 @@ public sealed class BookingService(BookingManager bookingManager, ICurrentUserSe
         Booking booking = await unitOfWork.Bookings.GetByIdAsync(bookingId, cancellationToken)
             ?? throw new NotFoundException(nameof(Booking), bookingId);
 
-        EnsureCanCancel(booking);
+        EnsureCanAccess(booking);
 
         booking.Cancel();
 
@@ -63,10 +63,12 @@ public sealed class BookingService(BookingManager bookingManager, ICurrentUserSe
         Booking booking = await unitOfWork.Bookings.GetByIdAsync(bookingId, cancellationToken)
             ?? throw new NotFoundException(nameof(Booking), bookingId);
 
+        EnsureCanAccess(booking);
+
         return booking.ToInfo();
     }
 
-    private void EnsureCanCancel(Booking booking)
+    private void EnsureCanAccess(Booking booking)
     {
         if (currentUser.IsInRole(Admin))
         {
