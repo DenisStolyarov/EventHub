@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using EventHub.Application.Abstractions.Identity;
 using Microsoft.AspNetCore.Http;
 
@@ -8,7 +7,7 @@ public sealed class CurrentUserService(IHttpContextAccessor context) : ICurrentU
 {
     private IHttpContextAccessor Context { get; } = context;
 
-    public Guid? Id => Guid.TryParse(GetValue(ClaimTypes.NameIdentifier), out Guid id) ? id : null;
+    public Guid? Id => Guid.TryParse(GetValue(JwtClaimTypes.Sub), out Guid id) ? id : null;
 
     public bool IsInRole(string role) => Context.HttpContext.User.IsInRole(role);
 

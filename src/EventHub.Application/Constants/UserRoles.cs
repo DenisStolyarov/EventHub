@@ -4,7 +4,7 @@ namespace EventHub.Application.Constants;
 
 public static class UserRoles
 {
-    public static string Admin { get; } = UserRole.Admin.ToString();
+    public const string Admin = nameof(UserRole.Admin);
 
-    public static string User { get; } = UserRole.User.ToString();
+    public const string User = nameof(UserRole.User);
 }

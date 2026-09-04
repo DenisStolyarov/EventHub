@@ -6,14 +6,17 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace EventHub.Api.Presentation.Configurations;
 
-public sealed class JwtBearerConfiguration(IOptions<JwtOptions> jwtOptions) : IConfigureOptions<JwtBearerOptions>
+public sealed class JwtBearerConfiguration(IOptions<JwtOptions> jwtOptions) : IConfigureNamedOptions<JwtBearerOptions>
 {
     private JwtOptions Options { get; } = jwtOptions.Value;
+
+    public void Configure(string? name, JwtBearerOptions options) => Configure(options);
 
     public void Configure(JwtBearerOptions options)
     {
         SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(Options.Secret));
 
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new()
         {
             ValidateIssuer = Options.ValidateIssuer,
@@ -26,7 +29,10 @@ public sealed class JwtBearerConfiguration(IOptions<JwtOptions> jwtOptions) : IC
             IssuerSigningKey = key,
 
             ValidateLifetime = Options.ValidateLifetime,
-            ClockSkew = Options.ClockSkew
+            ClockSkew = Options.ClockSkew,
+
+            NameClaimType = JwtClaimTypes.Name,
+            RoleClaimType = JwtClaimTypes.Role,
         };
     }
 }
