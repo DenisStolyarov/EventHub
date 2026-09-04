@@ -4,7 +4,7 @@ using EventHub.Application.Abstractions.Identity;
 
 namespace EventHub.Infrastructure.Identity;
 
-public class Sha256PasswordHasher : IPasswordHasher
+public sealed class Sha256PasswordHasher : IPasswordHasher
 {
     public string Hash(string password)
     {

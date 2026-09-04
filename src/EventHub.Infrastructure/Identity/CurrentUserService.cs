@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.Http;
 
 namespace EventHub.Infrastructure.Identity;
 
-public class CurrentUserService(IHttpContextAccessor context) : ICurrentUserService
+public sealed class CurrentUserService(IHttpContextAccessor context) : ICurrentUserService
 {
-    public IHttpContextAccessor Context { get; } = context;
+    private IHttpContextAccessor Context { get; } = context;
 
     public Guid? Id => Guid.TryParse(GetValue(ClaimTypes.NameIdentifier), out Guid id) ? id : null;
 
