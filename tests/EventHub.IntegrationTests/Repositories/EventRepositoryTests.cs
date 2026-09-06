@@ -140,12 +140,14 @@ public sealed class EventRepositoryTests(IntegrationTestFixture fixture) : Repos
     public async Task Delete_CascadesToBookings()
     {
         // Arrange
-        Event @event = EntityProvider.CreateEvent();
-        Booking booking1 = EntityProvider.CreateBooking(@event.Id);
-        Booking booking2 = EntityProvider.CreateBooking(@event.Id);
-
         await using AppDbContext ctx = Fixture.CreateContext();
         await using IUnitOfWork uow = Fixture.Create<IUnitOfWork>();
+
+        User user = await ctx.CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Event @event = EntityProvider.CreateEvent();
+        Booking booking1 = EntityProvider.CreateBooking(@event.Id, user.Id);
+        Booking booking2 = EntityProvider.CreateBooking(@event.Id, user.Id);
 
         ctx.Events.Add(@event);
         ctx.Bookings.AddRange(booking1, booking2);
