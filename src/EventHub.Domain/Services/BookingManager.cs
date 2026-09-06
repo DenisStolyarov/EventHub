@@ -28,7 +28,7 @@ public sealed class BookingManager(IBookingCounter bookingCounter, TimeProvider 
 
         if (activeBookingsCount >= MaxActiveBookingsAllowed)
         {
-            throw new MaxActiveBookingsExceededException();
+            throw new MaxActiveBookingsExceededException(MaxActiveBookingsAllowed);
         }
 
         if (!@event.TryReserveSeats())
