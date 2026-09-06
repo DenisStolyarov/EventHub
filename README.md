@@ -86,15 +86,15 @@ dotnet ef database update --project src/EventHub.Infrastructure --startup-projec
 
 | Project                     | Provider                           | Docker required |
 | --------------------------- | ---------------------------------- | --------------- |
-| `EventHub.Tests`            | EF Core InMemory                   | No              |
+| `EventHub.UnitTests`        | EF Core InMemory                   | No              |
 | `EventHub.IntegrationTests` | Real PostgreSQL via Testcontainers | Yes             |
 
-### Unit tests (`EventHub.Tests`)
+### Unit tests (`EventHub.UnitTests`)
 
 Moq and a fake time provider. Each test class gets an isolated in-memory database.
 
 ```bash
-dotnet test tests/EventHub.Tests
+dotnet test tests/EventHub.UnitTests
 ```
 
 ### Integration tests (`EventHub.IntegrationTests`)
@@ -117,15 +117,18 @@ dotnet test
 
 API versioning is supported via URL segment, `X-Api-Version` header, or `api-version` query string parameter. The default version is 1.0.
 
-| Method | Endpoint                 | Description                              | Success Status | Error Status                    |
-| ------ | ------------------------ | ---------------------------------------- | -------------- | ------------------------------- |
-| GET    | /api/v1/events           | Get events with filtering and pagination | 200 OK         | 400 Bad Request                 |
-| GET    | /api/v1/events/{id}      | Get event by id                          | 200 OK         | 404 Not Found                   |
-| POST   | /api/v1/events           | Create a new event                       | 201 Created    | 400 Bad Request                 |
-| POST   | /api/v1/events/{id}/book | Create a booking for an event            | 202 Accepted   | 404 Not Found / 409 Conflict    |
-| PUT    | /api/v1/events/{id}      | Update an event                          | 200 OK         | 404 Not Found / 400 Bad Request |
-| DELETE | /api/v1/events/{id}      | Delete an event                          | 204 No Content | 404 Not Found                   |
-| GET    | /api/v1/bookings/{id}    | Get booking by id                        | 200 OK         | 404 Not Found                   |
+| Method | Endpoint                 | Description                              | Auth          | Success Status | Error Status                |
+| ------ | ------------------------ | ---------------------------------------- | ------------- | -------------- | --------------------------- |
+| POST   | /api/v1/auth/register    | Register new user                        | None          | 204 No Content | 400 / 409                   |
+| POST   | /api/v1/auth/login       | Login and get JWT token                  | None          | 200 OK         | 400 / 401                   |
+| GET    | /api/v1/events           | Get events with filtering and pagination | None          | 200 OK         | 400                         |
+| GET    | /api/v1/events/{id}      | Get event by id                          | None          | 200 OK         | 404                         |
+| POST   | /api/v1/events           | Create a new event                       | Admin         | 201 Created    | 400 / 401 / 403 / 422       |
+| POST   | /api/v1/events/{id}/book | Create a booking for an event            | Authenticated | 202 Accepted   | 400 / 401 / 404 / 409       |
+| PUT    | /api/v1/events/{id}      | Update an event                          | Admin         | 200 OK         | 400 / 401 / 403 / 404 / 422 |
+| DELETE | /api/v1/events/{id}      | Delete an event                          | Admin         | 204 No Content | 401 / 403 / 404             |
+| GET    | /api/v1/bookings/{id}    | Get booking by id                        | Authenticated | 200 OK         | 401 / 403 / 404             |
+| DELETE | /api/v1/bookings/{id}    | Cancel a booking                         | Authenticated | 204 No Content | 401 / 403 / 404             |
 
 ### Query Parameters (GET /api/v1/events)
 
@@ -152,6 +155,38 @@ The response is wrapped in a `PaginatedResult` object:
 | hasNextPage     | bool  | Whether a next page exists          |
 | hasPreviousPage | bool  | Whether a previous page exists      |
 
+## Authentication
+
+### Role Model
+
+| Role  | Permissions                                                            |
+| ----- | --------------------------------------------------------------------- |
+| Admin | Create, update, delete events; cancel any booking; everything User can |
+| User  | Book events; view and cancel own bookings only                        |
+
+### JWT Configuration
+
+Token parameters are stored in `appsettings.json` under `Authentication:Jwt`:
+
+```json
+{
+  "Authentication": {
+    "Jwt": {
+      "Issuer": "https://eventhub.com",
+      "Audience": "eventhub-api",
+      "ExpiryMinutes": 15,
+      "Secret": "<at-least-32-chars-secret>"
+    }
+  }
+}
+```
+
+> **Security:** The `Secret` must be at least 32 characters. In production, set it via environment variables or user secrets — never commit a real secret to the repository.
+
+### Obtaining a Token
+
+Register via `POST /api/v1/auth/register`, then login via `POST /api/v1/auth/login` to obtain a JWT. Click **Authorize** in Swagger UI and paste the token.
+
 ## Event Model
 
 | Field          | Type           | Required | Description                                                         |
@@ -172,6 +207,7 @@ Booking endpoints return `BookingInfo`.
 | ------- | ------------- | ------------------------------ |
 | id      | Guid          | Booking identifier             |
 | eventId | Guid          | Identifier of the booked event |
+| userId  | Guid          | Identifier of the booking user |
 | status  | BookingStatus | Current booking status         |
 
 ### Booking Status
@@ -181,6 +217,13 @@ Booking endpoints return `BookingInfo`.
 | Pending   | Booking created, awaits background processing |
 | Confirmed | Booking processed successfully                |
 | Rejected  | Event deleted or processing failed            |
+| Cancelled | Booking cancelled by user or admin            |
+
+### Booking Rules
+
+- **Past events:** Booking is rejected if the event has already started (`400 Bad Request`).
+- **Active bookings limit:** A user cannot have more than 10 active (pending) bookings across future events (`409 Conflict`).
+- **Cancellation:** Users can cancel only their own bookings; admins can cancel any booking. Unauthorized cancellation returns `403 Forbidden`.
 
 ### Date/Time Format
 
