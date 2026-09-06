@@ -1,5 +1,6 @@
 using EventHub.Domain.Entities;
 using EventHub.Domain.Enums;
+using EventHub.Domain.Exceptions;
 using FluentAssertions;
 
 namespace EventHub.UnitTests.Entities;
@@ -59,5 +60,34 @@ public class BookingTests
         booking.Status.Should().Be(BookingStatus.Rejected);
 
         booking.ProcessedAt.Should().Be(processedAt);
+    }
+
+    [Fact]
+    public void Cancel_PendingBooking_SetsCancelledStatus()
+    {
+        // Arrange
+        DateTime createdAt = new(2026, 6, 1, 10, 0, 0, DateTimeKind.Utc);
+        Booking booking = new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdAt);
+
+        // Act
+        booking.Cancel();
+
+        // Assert
+        booking.Status.Should().Be(BookingStatus.Cancelled);
+    }
+
+    [Fact]
+    public void Cancel_AlreadyCancelled_ThrowsDomainException()
+    {
+        // Arrange
+        DateTime createdAt = new(2026, 6, 1, 10, 0, 0, DateTimeKind.Utc);
+        Booking booking = new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdAt);
+        booking.Cancel();
+
+        // Act
+        Action act = () => booking.Cancel();
+
+        // Assert
+        act.Should().Throw<DomainException>();
     }
 }
