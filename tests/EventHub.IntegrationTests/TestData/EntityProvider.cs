@@ -1,4 +1,5 @@
 using EventHub.Domain.Entities;
+using EventHub.Domain.Enums;
 using EventHub.Domain.ValueObjects;
 
 namespace EventHub.IntegrationTests.TestData;
@@ -24,4 +25,7 @@ public static class EntityProvider
 
     public static Booking CreateBooking(Guid eventId, Guid? userId = null, DateTime? createdAt = null) =>
         new(Guid.CreateVersion7(), eventId, userId ?? Guid.NewGuid(), createdAt ?? DefaultCreatedAt);
+
+    public static User CreateUser(string login = "testuser", UserRole role = UserRole.User) =>
+        new(Guid.CreateVersion7(), login, "hashedpassword", role);
 }
