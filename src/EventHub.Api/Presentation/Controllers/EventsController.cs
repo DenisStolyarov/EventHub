@@ -1,9 +1,11 @@
 using Asp.Versioning;
 using EventHub.Api.Presentation.Models.Events;
 using EventHub.Application.Abstractions.Services;
+using EventHub.Application.Constants;
 using EventHub.Application.Dtos;
 using EventHub.Application.Dtos.Bookings;
 using EventHub.Application.Dtos.Events;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EventHub.Api.Presentation.Controllers;
@@ -12,9 +14,11 @@ namespace EventHub.Api.Presentation.Controllers;
 [ApiVersion("1.0")]
 [Produces("application/json")]
 [Route("api/v{version:apiVersion}/events")]
+[Authorize]
 public class EventsController(IEventService eventService, IBookingService bookingService) : ControllerBase
 {
     [HttpGet]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(PaginatedResult<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PaginatedResult<EventDto>>> GetAll([FromQuery] GetEventsRequest request, CancellationToken cancellationToken)
@@ -27,6 +31,7 @@ public class EventsController(IEventService eventService, IBookingService bookin
     }
 
     [HttpGet("{id:guid}")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventDto>> GetById(Guid id, CancellationToken cancellationToken)
@@ -37,8 +42,11 @@ public class EventsController(IEventService eventService, IBookingService bookin
     }
 
     [HttpPost]
+    [Authorize(Roles = UserRoles.Admin)]
     [ProducesResponseType(typeof(EventDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<EventDto>> Create(CreateEventRequest request, CancellationToken cancellationToken)
     {
@@ -50,8 +58,11 @@ public class EventsController(IEventService eventService, IBookingService bookin
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = UserRoles.Admin)]
     [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<EventDto>> Update(Guid id, UpdateEventRequest request, CancellationToken cancellationToken)
@@ -64,7 +75,10 @@ public class EventsController(IEventService eventService, IBookingService bookin
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = UserRoles.Admin)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
@@ -75,6 +89,8 @@ public class EventsController(IEventService eventService, IBookingService bookin
 
     [HttpPost("{id:guid}/book")]
     [ProducesResponseType(typeof(BookingInfo), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<BookingInfo>> Book(Guid id, CancellationToken cancellationToken)

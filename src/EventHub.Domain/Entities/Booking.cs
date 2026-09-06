@@ -9,6 +9,8 @@ public class Booking
 
     public Guid EventId { get; }
 
+    public Guid UserId { get; }
+
     public BookingStatus Status { get; private set; }
 
     public DateTime CreatedAt { get; }
@@ -17,36 +19,57 @@ public class Booking
 
     public Event Event { get; private set; } = null!;
 
+    public User User { get; private set; } = null!;
+
     private Booking() { }
 
-    public Booking(Guid id, Guid eventId, TimeProvider? timeProvider = null)
+    internal Booking(Guid id, Guid eventId, Guid userId, DateTime createdAt)
     {
         if (eventId == Guid.Empty)
         {
             throw new ValidationException(nameof(EventId), "EventId cannot be empty.");
         }
 
-        TimeProvider tp = timeProvider ?? TimeProvider.System;
+        if (userId == Guid.Empty)
+        {
+            throw new ValidationException(nameof(UserId), "UserId cannot be empty.");
+        }
 
         Id = id;
         EventId = eventId;
+        UserId = userId;
         Status = BookingStatus.Pending;
-        CreatedAt = tp.GetUtcNow().UtcDateTime;
+        CreatedAt = createdAt;
     }
 
-    public void Confirm(TimeProvider? timeProvider = null)
+    public void Confirm(DateTime processedAt)
     {
-        TimeProvider tp = timeProvider ?? TimeProvider.System;
+        EnsureActive();
 
         Status = BookingStatus.Confirmed;
-        ProcessedAt = tp.GetUtcNow().UtcDateTime;
+        ProcessedAt = processedAt;
     }
 
-    public void Reject(TimeProvider? timeProvider = null)
+    public void Reject(DateTime processedAt)
     {
-        TimeProvider tp = timeProvider ?? TimeProvider.System;
+        EnsureActive();
 
         Status = BookingStatus.Rejected;
-        ProcessedAt = tp.GetUtcNow().UtcDateTime;
+        ProcessedAt = processedAt;
+    }
+
+    public void Cancel()
+    {
+        EnsureActive();
+
+        Status = BookingStatus.Cancelled;
+    }
+
+    private void EnsureActive()
+    {
+        if (Status is BookingStatus.Cancelled)
+        {
+            throw new DomainException("Booking is cancelled.");
+        }
     }
 }

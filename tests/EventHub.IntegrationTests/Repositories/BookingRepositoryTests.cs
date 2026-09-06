@@ -15,11 +15,13 @@ public class BookingRepositoryTests(IntegrationTestFixture fixture) : Repository
     public async Task GetByIdAsync_ReturnsBooking_WhenExists()
     {
         // Arrange
-        Event @event = EntityProvider.CreateEvent();
-        Booking booking = EntityProvider.CreateBooking(@event.Id);
-
         await using AppDbContext ctx = Fixture.CreateContext();
         await using IUnitOfWork uow = Fixture.Create<IUnitOfWork>();
+
+        User user = await ctx.CreateUserAsync(TestContext.Current.CancellationToken);
+
+        Event @event = EntityProvider.CreateEvent();
+        Booking booking = EntityProvider.CreateBooking(@event.Id, user.Id);
 
         ctx.Events.Add(@event);
         ctx.Bookings.Add(booking);
@@ -52,11 +54,13 @@ public class BookingRepositoryTests(IntegrationTestFixture fixture) : Repository
     public async Task Add_PersistsBooking()
     {
         // Arrange
-        Event @event = EntityProvider.CreateEvent();
-        Booking booking = EntityProvider.CreateBooking(@event.Id);
-
         await using AppDbContext ctx = Fixture.CreateContext();
         await using IUnitOfWork uow = Fixture.Create<IUnitOfWork>();
+
+        User user = await ctx.CreateUserAsync(TestContext.Current.CancellationToken);
+
+        Event @event = EntityProvider.CreateEvent();
+        Booking booking = EntityProvider.CreateBooking(@event.Id, user.Id);
 
         ctx.Events.Add(@event);
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -79,11 +83,13 @@ public class BookingRepositoryTests(IntegrationTestFixture fixture) : Repository
     public async Task Confirm_PersistsStatusChange()
     {
         // Arrange
-        Event @event = EntityProvider.CreateEvent();
-        Booking booking = EntityProvider.CreateBooking(@event.Id);
-
         await using AppDbContext ctx = Fixture.CreateContext();
         await using IUnitOfWork uow = Fixture.Create<IUnitOfWork>();
+
+        User user = await ctx.CreateUserAsync(TestContext.Current.CancellationToken);
+
+        Event @event = EntityProvider.CreateEvent();
+        Booking booking = EntityProvider.CreateBooking(@event.Id, user.Id);
 
         ctx.Events.Add(@event);
         ctx.Bookings.Add(booking);
@@ -92,7 +98,7 @@ public class BookingRepositoryTests(IntegrationTestFixture fixture) : Repository
         Booking tracked = (await uow.Bookings.GetByIdAsync(booking.Id, TestContext.Current.CancellationToken))!;
 
         // Act
-        tracked.Confirm();
+        tracked.Confirm(DateTime.UtcNow);
 
         await uow.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -110,12 +116,14 @@ public class BookingRepositoryTests(IntegrationTestFixture fixture) : Repository
     public async Task GetPendingBookingIdsAsync_ReturnsOnlyPendingBookingIds()
     {
         // Arrange
-        Event @event = EntityProvider.CreateEvent(totalSeats: 10);
-        Booking pending1 = EntityProvider.CreateBooking(@event.Id);
-        Booking pending2 = EntityProvider.CreateBooking(@event.Id);
-
         await using AppDbContext ctx = Fixture.CreateContext();
         await using IUnitOfWork uow = Fixture.Create<IUnitOfWork>();
+
+        User user = await ctx.CreateUserAsync(TestContext.Current.CancellationToken);
+
+        Event @event = EntityProvider.CreateEvent(totalSeats: 10);
+        Booking pending1 = EntityProvider.CreateBooking(@event.Id, user.Id);
+        Booking pending2 = EntityProvider.CreateBooking(@event.Id, user.Id);
 
         ctx.Events.Add(@event);
         ctx.Bookings.AddRange(pending1, pending2);
@@ -133,16 +141,18 @@ public class BookingRepositoryTests(IntegrationTestFixture fixture) : Repository
     public async Task GetPendingBookingIdsAsync_ExcludesConfirmedAndRejected()
     {
         // Arrange
-        Event @event = EntityProvider.CreateEvent(totalSeats: 10);
-        Booking pending = EntityProvider.CreateBooking(@event.Id);
-        Booking confirmed = EntityProvider.CreateBooking(@event.Id);
-        Booking rejected = EntityProvider.CreateBooking(@event.Id);
-
-        confirmed.Confirm();
-        rejected.Reject();
-
         await using AppDbContext ctx = Fixture.CreateContext();
         await using IUnitOfWork uow = Fixture.Create<IUnitOfWork>();
+
+        User user = await ctx.CreateUserAsync(TestContext.Current.CancellationToken);
+
+        Event @event = EntityProvider.CreateEvent(totalSeats: 10);
+        Booking pending = EntityProvider.CreateBooking(@event.Id, user.Id);
+        Booking confirmed = EntityProvider.CreateBooking(@event.Id, user.Id);
+        Booking rejected = EntityProvider.CreateBooking(@event.Id, user.Id);
+
+        confirmed.Confirm(DateTime.UtcNow);
+        rejected.Reject(DateTime.UtcNow);
 
         ctx.Events.Add(@event);
         ctx.Bookings.AddRange(pending, confirmed, rejected);
@@ -159,13 +169,15 @@ public class BookingRepositoryTests(IntegrationTestFixture fixture) : Repository
     public async Task GetPendingBookingIdsAsync_ReturnsEmpty_WhenNoPendingBookings()
     {
         // Arrange
-        Event @event = EntityProvider.CreateEvent(totalSeats: 10);
-        Booking confirmed = EntityProvider.CreateBooking(@event.Id);
-
-        confirmed.Confirm();
-
         await using AppDbContext ctx = Fixture.CreateContext();
         await using IUnitOfWork uow = Fixture.Create<IUnitOfWork>();
+
+        User user = await ctx.CreateUserAsync(TestContext.Current.CancellationToken);
+
+        Event @event = EntityProvider.CreateEvent(totalSeats: 10);
+        Booking confirmed = EntityProvider.CreateBooking(@event.Id, user.Id);
+
+        confirmed.Confirm(DateTime.UtcNow);
 
         ctx.Events.Add(@event);
         ctx.Bookings.Add(confirmed);

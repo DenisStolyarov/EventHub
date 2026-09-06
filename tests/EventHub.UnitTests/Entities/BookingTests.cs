@@ -1,7 +1,7 @@
 using EventHub.Domain.Entities;
 using EventHub.Domain.Enums;
+using EventHub.Domain.Exceptions;
 using FluentAssertions;
-using Microsoft.Extensions.Time.Testing;
 
 namespace EventHub.UnitTests.Entities;
 
@@ -13,56 +13,81 @@ public class BookingTests
         // Arrange
         Guid id = Guid.NewGuid();
         Guid eventId = Guid.NewGuid();
-        DateTimeOffset now = new(2026, 6, 1, 10, 0, 0, TimeSpan.Zero);
-        FakeTimeProvider timeProvider = new(now);
-        DateTime expectedCreatedAt = new(2026, 6, 1, 10, 0, 0, DateTimeKind.Utc);
+        Guid userId = Guid.NewGuid();
+        DateTime createdAt = new(2026, 6, 1, 10, 0, 0, DateTimeKind.Utc);
 
         // Act
-        Booking booking = new(id, eventId, timeProvider);
+        Booking booking = new(id, eventId, userId, createdAt);
 
         // Assert
         booking.Id.Should().Be(id);
         booking.EventId.Should().Be(eventId);
+        booking.UserId.Should().Be(userId);
         booking.Status.Should().Be(BookingStatus.Pending);
         booking.ProcessedAt.Should().BeNull();
-        booking.CreatedAt.Should().Be(expectedCreatedAt);
+        booking.CreatedAt.Should().Be(createdAt);
     }
 
     [Fact]
     public void Confirm_PendingBooking_SetsConfirmedStatusAndProcessedAt()
     {
         // Arrange
-        DateTimeOffset now = new(2026, 6, 1, 10, 0, 0, TimeSpan.Zero);
-        FakeTimeProvider timeProvider = new(now);
-        Booking booking = new(Guid.NewGuid(), Guid.NewGuid(), timeProvider);
-        DateTime expectedProcessedAt = new(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc);
+        DateTime createdAt = new(2026, 6, 1, 10, 0, 0, DateTimeKind.Utc);
+        DateTime processedAt = new(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc);
+        Booking booking = new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdAt);
 
         // Act
-        timeProvider.Advance(TimeSpan.FromHours(2));
-        booking.Confirm(timeProvider);
+        booking.Confirm(processedAt);
 
         // Assert
         booking.Status.Should().Be(BookingStatus.Confirmed);
 
-        booking.ProcessedAt.Should().Be(expectedProcessedAt);
+        booking.ProcessedAt.Should().Be(processedAt);
     }
 
     [Fact]
     public void Reject_PendingBooking_SetsRejectedStatusAndProcessedAt()
     {
         // Arrange
-        DateTimeOffset now = new(2026, 6, 1, 10, 0, 0, TimeSpan.Zero);
-        FakeTimeProvider timeProvider = new(now);
-        Booking booking = new(Guid.NewGuid(), Guid.NewGuid(), timeProvider);
-        DateTime expectedProcessedAt = new(2026, 6, 1, 13, 0, 0, DateTimeKind.Utc);
+        DateTime createdAt = new(2026, 6, 1, 10, 0, 0, DateTimeKind.Utc);
+        DateTime processedAt = new(2026, 6, 1, 13, 0, 0, DateTimeKind.Utc);
+        Booking booking = new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdAt);
 
         // Act
-        timeProvider.Advance(TimeSpan.FromHours(3));
-        booking.Reject(timeProvider);
+        booking.Reject(processedAt);
 
         // Assert
         booking.Status.Should().Be(BookingStatus.Rejected);
 
-        booking.ProcessedAt.Should().Be(expectedProcessedAt);
+        booking.ProcessedAt.Should().Be(processedAt);
+    }
+
+    [Fact]
+    public void Cancel_PendingBooking_SetsCancelledStatus()
+    {
+        // Arrange
+        DateTime createdAt = new(2026, 6, 1, 10, 0, 0, DateTimeKind.Utc);
+        Booking booking = new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdAt);
+
+        // Act
+        booking.Cancel();
+
+        // Assert
+        booking.Status.Should().Be(BookingStatus.Cancelled);
+    }
+
+    [Fact]
+    public void Cancel_AlreadyCancelled_ThrowsDomainException()
+    {
+        // Arrange
+        DateTime createdAt = new(2026, 6, 1, 10, 0, 0, DateTimeKind.Utc);
+        Booking booking = new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), createdAt);
+        booking.Cancel();
+
+        // Act
+        Action act = () => booking.Cancel();
+
+        // Assert
+        act.Should().Throw<DomainException>();
     }
 }

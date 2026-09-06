@@ -2,6 +2,8 @@ using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
 using EventHub.Api.Presentation.Configurations;
 using EventHub.Api.Presentation.ExceptionHandlers;
+using EventHub.Infrastructure.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace EventHub.Api.Presentation;
 
@@ -11,13 +13,45 @@ public static class DependencyInjection
     {
         services.AddControllers();
         services.AddProblemDetails();
-        services.AddSwaggerGen();
+        services.AddHttpContextAccessor();
         services.AddEndpointsApiExplorer();
+        services.AddJwtAuthentication();
+        services.AddVersioning();
+        services.AddSwagger();
 
         services.AddExceptionHandler<GlobalExceptionHandler>();
 
-        services.ConfigureOptions<SwaggerConfiguration>();
+        return services;
+    }
 
+    public static WebApplication UsePresentation(this WebApplication app)
+    {
+        app.UseExceptionHandler();
+        app.UseStatusCodePages();
+        app.UseSwaggerMiddleware();
+        app.UseAuthentication();
+        app.UseAuthorization();
+
+        app.MapControllers();
+
+        return app;
+    }
+
+    private static void AddJwtAuthentication(this IServiceCollection services)
+    {
+        services
+            .AddOptionsWithValidateOnStart<JwtOptions>()
+            .ValidateDataAnnotations()
+            .BindConfiguration(JwtOptions.SectionName);
+
+        services
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer();
+
+        services.ConfigureOptions<JwtBearerConfiguration>();
+    }
+
+    private static void AddVersioning(this IServiceCollection services) =>
         services.AddApiVersioning(options =>
         {
             options.ReportApiVersions = true;
@@ -33,14 +67,15 @@ public static class DependencyInjection
             options.SubstituteApiVersionInUrl = true;
         });
 
-        return services;
+    private static void AddSwagger(this IServiceCollection services)
+    {
+        services.AddSwaggerGen();
+
+        services.ConfigureOptions<SwaggerConfiguration>();
     }
 
-    public static WebApplication UsePresentation(this WebApplication app)
+    private static void UseSwaggerMiddleware(this WebApplication app)
     {
-        app.UseExceptionHandler();
-        app.UseStatusCodePages();
-
         if (app.Environment.IsDevelopment())
         {
             IApiVersionDescriptionProvider provider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
@@ -56,9 +91,5 @@ public static class DependencyInjection
                 }
             });
         }
-
-        app.MapControllers();
-
-        return app;
     }
 }
