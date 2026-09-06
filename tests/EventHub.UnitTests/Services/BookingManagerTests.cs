@@ -139,6 +139,52 @@ public sealed class BookingManagerTests
         @event.AvailableSeats.Should().Be(totalSeats);
     }
 
+    [Fact]
+    public async Task CreateAsync_ActiveBookingsOneBelowLimit_ReturnsBooking()
+    {
+        // Arrange
+        Guid userId = Guid.NewGuid();
+        FakeTimeProvider timeProvider = new(UtcDate(2026, 5, 1, 10));
+        Event @event = CreateEvent(startAt: UtcDateTime(2026, 6, 1, 10));
+        BookingManager manager = CreateManagerWithActiveBookings(BookingManager.MaxActiveBookingsAllowed - 1, timeProvider);
+
+        // Act
+        Booking booking = await manager.CreateAsync(@event, userId, TestContext.Current.CancellationToken);
+
+        // Assert
+        booking.Should().NotBeNull();
+        booking.EventId.Should().Be(@event.Id);
+        booking.UserId.Should().Be(userId);
+        booking.Status.Should().Be(BookingStatus.Pending);
+    }
+
+    [Fact]
+    public async Task CreateAsync_DifferentUsersHaveIndependentLimits()
+    {
+        // Arrange
+        Guid user1 = Guid.NewGuid();
+        Guid user2 = Guid.NewGuid();
+        FakeTimeProvider timeProvider = new(UtcDate(2026, 5, 1, 10));
+        Event @event = CreateEvent(startAt: UtcDateTime(2026, 6, 1, 10));
+        Mock<IBookingCounter> counterMock = new();
+        counterMock.SetupSequence(c => c.CountAsync(It.IsAny<Expression<Func<Booking, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(10)
+            .ReturnsAsync(0);
+        BookingManager manager = new(counterMock.Object, timeProvider);
+
+        // Act
+        Func<Task> user1Act = () => manager.CreateAsync(@event, user1, TestContext.Current.CancellationToken);
+        Task<Booking> user2Act() => manager.CreateAsync(@event, user2, TestContext.Current.CancellationToken);
+
+        // Assert
+        await user1Act.Should().ThrowAsync<MaxActiveBookingsExceededException>();
+
+        Booking user2Booking = await user2Act();
+
+        user2Booking.Should().NotBeNull();
+        user2Booking.UserId.Should().Be(user2);
+    }
+
     private static BookingManager CreateManagerWithActiveBookings(int activeCount, TimeProvider? timeProvider = null) =>
         new(CreateCounterMock(activeCount).Object, timeProvider ?? TimeProvider.System);
 
