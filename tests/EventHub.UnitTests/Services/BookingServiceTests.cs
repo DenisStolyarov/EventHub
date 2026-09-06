@@ -267,6 +267,40 @@ public sealed class BookingServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetBookingByIdAsync_NotOwner_ThrowsForbiddenException()
+    {
+        // Arrange
+        EventDto @event = await CreateEventAsync(totalSeats: 10);
+        BookingInfo created = await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
+
+        _currentUserMock.SetupGet(c => c.Id).Returns(Guid.NewGuid());
+
+        // Act
+        Func<Task> act = () => _bookingService.GetBookingByIdAsync(created.Id, TestContext.Current.CancellationToken);
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async Task GetBookingByIdAsync_AdminCanAccessAnyBooking()
+    {
+        // Arrange
+        EventDto @event = await CreateEventAsync(totalSeats: 10);
+        BookingInfo created = await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
+
+        _currentUserMock.SetupGet(c => c.Id).Returns(Guid.NewGuid());
+        _currentUserMock.Setup(c => c.IsInRole(It.IsAny<string>())).Returns(true);
+
+        // Act
+        BookingInfo result = await _bookingService.GetBookingByIdAsync(created.Id, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Id.Should().Be(created.Id);
+    }
+
+    [Fact]
     public async Task CreateBookingAsync_ConcurrentOverbooking_ExactlyLimitSucceedsAndExcessThrows()
     {
         // Arrange
@@ -356,6 +390,100 @@ public sealed class BookingServiceTests : IDisposable
         List<Booking> storedBookings = await db.Bookings.ToListAsync(TestContext.Current.CancellationToken);
 
         storedBookings.Should().HaveCount(totalSeats);
+    }
+
+    [Fact]
+    public async Task CancelBookingAsync_BookingExists_ReturnsCancelledBookingInfo()
+    {
+        // Arrange
+        EventDto @event = await CreateEventAsync(totalSeats: 1);
+        BookingInfo created = await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
+
+        Booking? booking = await _dbContext.Bookings.FindAsync([created.Id], TestContext.Current.CancellationToken);
+
+        booking.Should().NotBeNull();
+
+        _currentUserMock.SetupGet(c => c.Id).Returns(booking.UserId);
+
+        // Act
+        BookingInfo result = await _bookingService.CancelBookingAsync(created.Id, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Status.Should().Be(BookingStatus.Cancelled);
+
+        Event? storedEvent = await _dbContext.Events.FindAsync([@event.Id], TestContext.Current.CancellationToken);
+
+        storedEvent.Should().NotBeNull();
+        storedEvent!.AvailableSeats.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CancelBookingAsync_BookingDoesNotExist_ThrowsNotFoundException()
+    {
+        // Arrange
+        Guid bookingId = Guid.NewGuid();
+
+        // Act
+        Func<Task> act = () => _bookingService.CancelBookingAsync(bookingId, TestContext.Current.CancellationToken);
+
+        // Assert
+        await act.Should()
+            .ThrowAsync<NotFoundException>()
+            .Where(e => e.EntityId.Equals(bookingId) && e.EntityName == nameof(Booking));
+    }
+
+    [Fact]
+    public async Task CancelBookingAsync_NotOwner_ThrowsForbiddenException()
+    {
+        // Arrange
+        EventDto @event = await CreateEventAsync(totalSeats: 10);
+        BookingInfo created = await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
+
+        _currentUserMock.SetupGet(c => c.Id).Returns(Guid.NewGuid());
+
+        // Act
+        Func<Task> act = () => _bookingService.CancelBookingAsync(created.Id, TestContext.Current.CancellationToken);
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async Task CancelBookingAsync_AdminCancelsAnyBooking_ReturnsCancelledBookingInfo()
+    {
+        // Arrange
+        EventDto @event = await CreateEventAsync(totalSeats: 1);
+        BookingInfo created = await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
+
+        _currentUserMock.SetupGet(c => c.Id).Returns(Guid.NewGuid());
+        _currentUserMock.Setup(c => c.IsInRole(It.IsAny<string>())).Returns(true);
+
+        // Act
+        BookingInfo result = await _bookingService.CancelBookingAsync(created.Id, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Status.Should().Be(BookingStatus.Cancelled);
+
+        Event? storedEvent = await _dbContext.Events.FindAsync([@event.Id], TestContext.Current.CancellationToken);
+
+        storedEvent.Should().NotBeNull();
+        storedEvent!.AvailableSeats.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CancelBookingAsync_UnauthenticatedUser_ThrowsUnauthorizedException()
+    {
+        // Arrange
+        EventDto @event = await CreateEventAsync(totalSeats: 10);
+        BookingInfo created = await _bookingService.CreateBookingAsync(@event.Id, TestContext.Current.CancellationToken);
+
+        _currentUserMock.SetupGet(c => c.Id).Returns((Guid?)null);
+
+        // Act
+        Func<Task> act = () => _bookingService.CancelBookingAsync(created.Id, TestContext.Current.CancellationToken);
+
+        // Assert
+        await act.Should().ThrowAsync<UnauthorizedException>();
     }
 
     private async Task<EventDto> CreateEventAsync(int totalSeats = 100)
