@@ -2,6 +2,8 @@ using EventHub.Domain.Abstractions;
 using EventHub.Domain.Entities;
 using EventHub.Domain.Exceptions;
 
+using static EventHub.Domain.Specifications.BookingSpecifications;
+
 namespace EventHub.Domain.Services;
 
 public sealed class BookingManager(IBookingCounter bookingCounter, TimeProvider timeProvider)
@@ -23,7 +25,7 @@ public sealed class BookingManager(IBookingCounter bookingCounter, TimeProvider 
         }
 
         int activeBookingsCount = await bookingCounter.CountAsync(
-            b => b.Event.StartAt > now && b.UserId == userId,
+            IsActiveForUser(userId, now),
             cancellationToken);
 
         if (activeBookingsCount >= MaxActiveBookingsAllowed)

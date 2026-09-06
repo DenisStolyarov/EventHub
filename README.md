@@ -223,7 +223,7 @@ Booking endpoints return `BookingInfo`.
 
 - **Past events:** Booking is rejected if the event has already started (`400 Bad Request`).
 - **Active bookings limit:** A user cannot have more than 10 active (pending) bookings across future events (`409 Conflict`).
-- **Cancellation:** Users can cancel only their own bookings; admins can cancel any booking. Unauthorized cancellation returns `403 Forbidden`.
+- **Access:** Users can view and cancel only their own bookings; admins can access any booking. Unauthorized access to another user's booking returns `403 Forbidden`.
 
 ### Date/Time Format
 

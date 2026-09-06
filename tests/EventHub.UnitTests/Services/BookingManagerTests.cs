@@ -5,7 +5,10 @@ using EventHub.Domain.Enums;
 using EventHub.Domain.Exceptions;
 using EventHub.Domain.Services;
 using EventHub.Domain.ValueObjects;
+using EventHub.Infrastructure.Persistence;
+using EventHub.Infrastructure.Persistence.Repositories;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -185,6 +188,39 @@ public sealed class BookingManagerTests
         user2Booking.UserId.Should().Be(user2);
     }
 
+    [Fact]
+    public async Task CreateAsync_CancelledAndRejectedBookingsDoNotCountTowardsLimit()
+    {
+        // Arrange
+        Guid userId = Guid.NewGuid();
+        FakeTimeProvider timeProvider = new(UtcDate(2026, 5, 1, 10));
+        Event @event = CreateEvent(startAt: UtcDateTime(2026, 6, 1, 10), totalSeats: 20);
+
+        IEnumerable<Booking> cancelledBookings = Enumerable.Range(0, 5)
+            .Select(_ => CreateCancelledBooking(@event.Id, userId));
+        IEnumerable<Booking> rejectedBookings = Enumerable.Range(0, 5)
+            .Select(_ => CreateRejectedBooking(@event.Id, userId));
+
+        await using AppDbContext ctx = CreateContext();
+
+        ctx.Events.Add(@event);
+        ctx.Bookings.AddRange(cancelledBookings);
+        ctx.Bookings.AddRange(rejectedBookings);
+
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        BookingManager manager = new(new BookingRepository(ctx), timeProvider);
+
+        // Act
+        Booking booking = await manager.CreateAsync(@event, userId, TestContext.Current.CancellationToken);
+
+        // Assert
+        booking.Should().NotBeNull();
+        booking.Status.Should().Be(BookingStatus.Pending);
+        booking.UserId.Should().Be(userId);
+        booking.EventId.Should().Be(@event.Id);
+    }
+
     private static BookingManager CreateManagerWithActiveBookings(int activeCount, TimeProvider? timeProvider = null) =>
         new(CreateCounterMock(activeCount).Object, timeProvider ?? TimeProvider.System);
 
@@ -203,5 +239,32 @@ public sealed class BookingManagerTests
         Period period = new(startAt, startAt.AddHours(2));
 
         return new Event(Guid.NewGuid(), "Event title", "Event description", totalSeats, period);
+    }
+
+    private static AppDbContext CreateContext()
+    {
+        DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        return new AppDbContext(options);
+    }
+
+    private static Booking CreateCancelledBooking(Guid eventId, Guid userId)
+    {
+        Booking booking = new(Guid.CreateVersion7(), eventId, userId, UtcDateTime(2026, 5, 1, 10));
+
+        booking.Cancel();
+
+        return booking;
+    }
+
+    private static Booking CreateRejectedBooking(Guid eventId, Guid userId)
+    {
+        Booking booking = new(Guid.CreateVersion7(), eventId, userId, UtcDateTime(2026, 5, 1, 10));
+
+        booking.Reject(UtcDateTime(2026, 5, 1, 10));
+
+        return booking;
     }
 }
