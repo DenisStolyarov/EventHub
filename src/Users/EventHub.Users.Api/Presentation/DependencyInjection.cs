@@ -1,6 +1,5 @@
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
-using EventHub.Shared.Authentication;
 using EventHub.Users.Api.Presentation.Configurations;
 using EventHub.Users.Api.Presentation.ExceptionHandlers;
 
@@ -12,9 +11,7 @@ public static class DependencyInjection
     {
         services.AddControllers();
         services.AddProblemDetails();
-        services.AddHttpContextAccessor();
         services.AddEndpointsApiExplorer();
-        services.AddJwtAuthentication();
         services.AddVersioning();
         services.AddSwagger();
 
@@ -28,8 +25,6 @@ public static class DependencyInjection
         app.UseExceptionHandler();
         app.UseStatusCodePages();
         app.UseSwaggerMiddleware();
-        app.UseAuthentication();
-        app.UseAuthorization();
 
         app.MapControllers();
 

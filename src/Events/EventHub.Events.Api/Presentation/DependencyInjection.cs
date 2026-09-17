@@ -12,7 +12,6 @@ public static class DependencyInjection
     {
         services.AddControllers();
         services.AddProblemDetails();
-        services.AddHttpContextAccessor();
         services.AddEndpointsApiExplorer();
         services.AddJwtAuthentication();
         services.AddVersioning();
