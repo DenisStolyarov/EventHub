@@ -1,12 +1,34 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/EventHub.Api/EventHub.Api.csproj" />
-    <Project Path="src/EventHub.Application/EventHub.Application.csproj" />
-    <Project Path="src/EventHub.Domain/EventHub.Domain.csproj" />
-    <Project Path="src/EventHub.Infrastructure/EventHub.Infrastructure.csproj" />
+    <Project Path="src/EventHub.Shared.Authentication/EventHub.Shared.Authentication.csproj" />
+  </Folder>
+  <Folder Name="/src/Users/">
+    <Project Path="src/Users/EventHub.Users.Domain/EventHub.Users.Domain.csproj" />
+    <Project Path="src/Users/EventHub.Users.Application/EventHub.Users.Application.csproj" />
+    <Project Path="src/Users/EventHub.Users.Infrastructure/EventHub.Users.Infrastructure.csproj" />
+    <Project Path="src/Users/EventHub.Users.Api/EventHub.Users.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Events/">
+    <Project Path="src/Events/EventHub.Events.Domain/EventHub.Events.Domain.csproj" />
+    <Project Path="src/Events/EventHub.Events.Application/EventHub.Events.Application.csproj" />
+    <Project Path="src/Events/EventHub.Events.Infrastructure/EventHub.Events.Infrastructure.csproj" />
+    <Project Path="src/Events/EventHub.Events.Api/EventHub.Events.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Bookings/">
+    <Project Path="src/Bookings/EventHub.Bookings.Domain/EventHub.Bookings.Domain.csproj" />
+    <Project Path="src/Bookings/EventHub.Bookings.Application/EventHub.Bookings.Application.csproj" />
+    <Project Path="src/Bookings/EventHub.Bookings.Infrastructure/EventHub.Bookings.Infrastructure.csproj" />
+    <Project Path="src/Bookings/EventHub.Bookings.Api/EventHub.Bookings.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Gateway/">
+    <Project Path="src/Gateway/EventHub.Gateway/EventHub.Gateway.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/EventHub.UnitTests/EventHub.UnitTests.csproj" />
-    <Project Path="tests/EventHub.IntegrationTests/EventHub.IntegrationTests.csproj" />
+    <Project Path="tests/EventHub.Users.UnitTests/EventHub.Users.UnitTests.csproj" />
+    <Project Path="tests/EventHub.Users.IntegrationTests/EventHub.Users.IntegrationTests.csproj" />
+    <Project Path="tests/EventHub.Events.UnitTests/EventHub.Events.UnitTests.csproj" />
+    <Project Path="tests/EventHub.Events.IntegrationTests/EventHub.Events.IntegrationTests.csproj" />
+    <Project Path="tests/EventHub.Bookings.UnitTests/EventHub.Bookings.UnitTests.csproj" />
+    <Project Path="tests/EventHub.Bookings.IntegrationTests/EventHub.Bookings.IntegrationTests.csproj" />
   </Folder>
 </Solution>

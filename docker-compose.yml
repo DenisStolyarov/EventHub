@@ -1,26 +1,27 @@
-# PostgreSQL для EventApi — совпадает с ConnectionStrings:DefaultConnection в appsettings.json
+# PostgreSQL для микросервисов EventHub — одна СУБД, три database:
+# eventhub_users, eventhub_events, eventhub_bookings
+# Имена совпадают с ConnectionStrings в appsettings.Development.json каждого сервиса.
 # Запуск из корня репозитория: docker compose up -d
 # Остановка: docker compose down
-# Данные сохраняются в именованном томе eventapi_pgdata
+# Данные сохраняются в именованном томе eventhub_pgdata
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: eventapi-postgres
+    container_name: eventhub-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: eventapi
     ports:
       - "5432:5432"
     volumes:
-      - eventapi_pgdata:/var/lib/postgresql/data
+      - eventhub_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d eventapi"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
 
 volumes:
-  eventapi_pgdata:
+  eventhub_pgdata:
