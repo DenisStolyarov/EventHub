@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EventHub.Users.Application\EventHub.Users.Application.csproj" />
+    <ProjectReference Include="..\..\EventHub.Shared.Authentication\EventHub.Shared.Authentication.csproj" />
+  </ItemGroup>
+
+</Project>
