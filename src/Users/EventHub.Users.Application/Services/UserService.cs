@@ -41,6 +41,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IPasswordHasher password
         User user = new(Guid.CreateVersion7(), dto.Login, passwordHash, role);
 
         unitOfWork.Users.Add(user);
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }
