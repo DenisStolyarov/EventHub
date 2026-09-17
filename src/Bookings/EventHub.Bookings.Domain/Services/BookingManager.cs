@@ -18,7 +18,7 @@ public sealed class BookingManager(IBookingCounter bookingCounter, TimeProvider 
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
 
         int activeBookingsCount = await bookingCounter.CountAsync(
-            IsActiveForUser(userId),
+            IsActiveForUser(userId, now),
             cancellationToken);
 
         if (activeBookingsCount >= MaxActiveBookingsAllowed)
