@@ -1,6 +1,8 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/EventHub.Shared.Authentication/EventHub.Shared.Authentication.csproj" />
+    <Project Path="src/EventHub.Shared.Contracts/EventHub.Shared.Contracts.csproj" />
+    <Project Path="src/EventHub.Shared.Messaging/EventHub.Shared.Messaging.csproj" />
   </Folder>
   <Folder Name="/src/Users/">
     <Project Path="src/Users/EventHub.Users.Domain/EventHub.Users.Domain.csproj" />
