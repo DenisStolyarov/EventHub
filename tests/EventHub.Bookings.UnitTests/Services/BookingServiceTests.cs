@@ -24,6 +24,7 @@ public sealed class BookingServiceTests
     private readonly Mock<IBookingCounter> _bookingCounterMock;
     private readonly Mock<IBookingRepository> _bookingsMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IOutboxRepository> _outboxMock = new();
     private readonly FakeTimeProvider _timeProvider = new(UtcDate(2026, 1, 1, 10));
     private readonly Guid _userId = Guid.NewGuid();
     private readonly BookingService _bookingService;
@@ -51,10 +52,16 @@ public sealed class BookingServiceTests
         _unitOfWorkMock
             .SetupGet(u => u.Bookings)
             .Returns(_bookingsMock.Object);
+        _unitOfWorkMock
+            .SetupGet(u => u.Outbox)
+            .Returns(_outboxMock.Object);
 
         BookingManager bookingManager = new(_bookingCounterMock.Object, _timeProvider);
 
-        _bookingService = new BookingService(bookingManager, _currentUserMock.Object, _unitOfWorkMock.Object);
+        _bookingService = new BookingService(
+            bookingManager,
+            _currentUserMock.Object,
+            _unitOfWorkMock.Object);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using EventHub.Bookings.Application.Abstractions.Services;
+using EventHub.Bookings.Application.IntegrationEvents;
 using EventHub.Bookings.Application.Services;
 using EventHub.Bookings.Domain.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +15,12 @@ public static class DependencyInjection
         services.AddScoped<IBookingService, BookingService>();
 
         services.AddTransient<BookingManager>();
+
+        services.AddScoped<EventSeatReservedHandler>();
+
+        services.AddScoped<EventSeatUnavailableHandler>();
+
+        services.AddScoped<EventCancelledHandler>();
 
         return services;
     }

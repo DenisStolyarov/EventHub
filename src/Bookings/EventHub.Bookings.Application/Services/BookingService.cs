@@ -5,12 +5,16 @@ using EventHub.Bookings.Application.Exceptions;
 using EventHub.Bookings.Domain.Entities;
 using EventHub.Bookings.Domain.Services;
 using EventHub.Shared.Authentication;
+using EventHub.Shared.Contracts;
 
 using static EventHub.Shared.Authentication.UserRoles;
 
 namespace EventHub.Bookings.Application.Services;
 
-public sealed class BookingService(BookingManager bookingManager, ICurrentUserService currentUser, IUnitOfWork unitOfWork) : IBookingService
+public sealed class BookingService(
+    BookingManager bookingManager,
+    ICurrentUserService currentUser,
+    IUnitOfWork unitOfWork) : IBookingService
 {
     public async Task<BookingInfo> CreateBookingAsync(Guid eventId, CancellationToken cancellationToken = default)
     {
@@ -18,7 +22,10 @@ public sealed class BookingService(BookingManager bookingManager, ICurrentUserSe
 
         Booking booking = await bookingManager.CreateAsync(eventId, userId, cancellationToken);
 
+        BookingCreated bookingCreated = new(Guid.CreateVersion7(), booking.Id, eventId);
+
         unitOfWork.Bookings.Add(booking);
+        unitOfWork.Outbox.Add(bookingCreated);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -33,6 +40,10 @@ public sealed class BookingService(BookingManager bookingManager, ICurrentUserSe
         EnsureCanAccess(booking);
 
         booking.Cancel();
+
+        BookingCancelled bookingCancelled = new(Guid.CreateVersion7(), booking.EventId);
+
+        unitOfWork.Outbox.Add(bookingCancelled);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

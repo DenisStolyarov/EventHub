@@ -70,6 +70,8 @@ public sealed class IntegrationTestFixture : IAsyncLifetime
 
         services.AddTransient<IUnitOfWork, UnitOfWork>();
 
+        services.AddSingleton(TimeProvider.System);
+
         return services.BuildServiceProvider();
     }
 
