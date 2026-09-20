@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+.git/
+.github/
+docs/
+tests/
+TestResults/
+*.md
+docker-compose*.yml
+.gitattributes
+.gitignore
+
+# .editorconfig НЕЛЬЗЯ исключать: AnalysisLevelStyle=latest-recommended без него
+# повышает IDE0021/IDE0022 до error (TreatWarningsAsErrors) и валит сборку образов.
