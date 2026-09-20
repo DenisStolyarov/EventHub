@@ -1,113 +1,112 @@
 # EventHub
 
-REST API service for managing events, built on ASP.NET Core Web API.
+Microservices solution for managing events, built on ASP.NET Core (.NET 10) with EF Core and PostgreSQL.
 
-## Project Architecture
+Three independent services + three shared projects:
+
+| Service  | Ports (http/https) | Database          | Responsibilities                                  |
+| -------- | ------------------ | ----------------- | ------------------------------------------------- |
+| Users    | 5101 / 7101        | `eventhub_users`  | Registration, login, password hashing, JWT issuing |
+| Events   | 5102 / 7102        | `eventhub_events` | Event CRUD, seat accounting                        |
+| Bookings | 5103 / 7103        | `eventhub_bookings` | Booking creation and cancellation                 |
+
+## Solution Layout
 
 ```
-Presentation (EventHub.Api) ──▶ Application ──▶ Domain
+src/
+├── EventHub.Shared.Authentication/    Shared JWT validation options, claim types, current-user service, UserRoles
+├── EventHub.Shared.Contracts/        Integration event contracts + topic names shared by Bookings and Events
+├── EventHub.Shared.Messaging/        Kafka infrastructure: producer, outbox dispatcher, consumers, topic initializer
+├── Users/
+│   ├── EventHub.Users.Domain/        User, UserRole, domain exceptions
+│   ├── EventHub.Users.Application/  UserService, DTOs, port interfaces
+│   ├── EventHub.Users.Infrastructure/ UsersDbContext, repositories, migrations, JWT issuing (JwtIssuerOptions)
+│   └── EventHub.Users.Api/           AuthController, JWT validation, Swagger
+├── Events/
+│   ├── EventHub.Events.Domain/       Event, Period, seat reservation rules
+│   ├── EventHub.Events.Application/  EventService, DTOs, pagination, filters
+│   ├── EventHub.Events.Infrastructure/ EventsDbContext, repositories, migrations
+│   └── EventHub.Events.Api/          EventsController, JWT validation, Swagger
+└── Bookings/
+    ├── EventHub.Bookings.Domain/     Booking, BookingStatus, BookingManager (max 10 active)
+    ├── EventHub.Bookings.Application/ BookingService, DTOs, port interfaces
+    ├── EventHub.Bookings.Infrastructure/ BookingsDbContext, repositories, migrations
+    └── EventHub.Bookings.Api/        BookingsController, JWT validation, Swagger
+```
+
+Each service follows clean architecture:
+
+```
+Presentation (Api) ──▶ Application ──▶ Domain
         │
         └──▶ Infrastructure ──▶ Application
 ```
 
-| Project                   | Responsibility                                                                                                 |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `EventHub.Domain`         | Core entities, value objects, enums, and domain exceptions. Pure C# — no framework references.                 |
-| `EventHub.Application`    | Business logic: use-case services, port interfaces, DTOs, filters, and mapping extensions.                     |
-| `EventHub.Infrastructure` | EF Core persistence, repositories, migrations, and background processing.                                      |
-| `EventHub.Api`            | Composition root, thin controllers, request DTOs, exception handler, and Swagger/API versioning configuration. |
+Services are fully decoupled — bookings reference users and events by `Guid` ids only (`UserId`, `EventId`), with no cross-service foreign keys. Each service owns its database, EF Core `DbContext`, and migrations.
 
 ## Requirements
 
-- .NET 10 SDK or later
-- PostgreSQL 14+
+- .NET 10 SDK
+- PostgreSQL 16
+- Apache Kafka 3.9
 
-## Database
+## Database and Kafka
 
-Start a local PostgreSQL database with Docker Compose:
-
-```bash
-docker compose up -d
-```
-
-The included `docker-compose.yml` runs `postgres:16-alpine` on port `5432` with:
-
-- Database: `eventapi`
-- Username: `postgres`
-- Password: `postgres`
-
-To stop the database:
+Start the full stack — PostgreSQL, Kafka, three API services and the Gateway:
 
 ```bash
-docker compose down
+podman compose up -d --build
+# or:
+docker compose up -d --build
 ```
 
-## Configuration
+| Container | Port | Purpose |
+| --------- | ---- | ------- |
+| eventhub-postgres | 5432 | one instance, three databases (`eventhub_*`) — created automatically by each service's `MigrateAsync()` |
+| eventhub-kafka | 9092 | KRaft (no Zookeeper); internal listener `kafka:29092` for compose services |
+| eventhub-users-api / events-api / bookings-api | 5101–5103 | API services |
+| eventhub-gateway | **5000** | single entry point (YARP reverse proxy + aggregated Swagger UI at `/swagger`) |
 
-Set the connection string in `appsettings.json`:
+Data lives in named volumes (`eventhub_pgdata`, `eventhub_kafka_data`) and survives restarts and `compose down`; a full wipe (databases + Kafka topics/offsets) is `podman compose down -v`.
 
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=eventapi;Username=postgres;Password=postgres"
-  }
-}
-```
-
-You can also override it via environment variables or .NET user secrets.
+Stop: `podman compose down`.
 
 ## Build and Run
 
 ```bash
-docker compose up -d
 dotnet build
-dotnet run --project src/EventHub.Api
+dotnet run --project src/Users/EventHub.Users.Api       # http://localhost:5101
+dotnet run --project src/Events/EventHub.Events.Api     # http://localhost:5102
+dotnet run --project src/Bookings/EventHub.Bookings.Api # http://localhost:5103
+dotnet run --project src/Gateway/EventHub.Gateway       # http://localhost:5000
 ```
 
-After launch, Swagger UI is available at: [http://localhost:5000/swagger](http://localhost:5000/swagger).
+Swagger UI: `http://localhost:<port>/swagger`; via Gateway — a single aggregated UI at `http://localhost:5000/swagger`.
+
+Migrations are applied automatically at startup (`MigrateAsync`).
 
 ## Migrations
 
-Migrations live in `EventHub.Infrastructure`; use `EventHub.Api` as the startup project for configuration.
-
-Create a new migration after changing the model in `AppDbContext` or entity configurations:
+Migrations live in each service's `Infrastructure/Persistence/Migrations` folder. Use the service's Api project as the startup project:
 
 ```bash
-dotnet ef migrations add <MigrationName> --project src/EventHub.Infrastructure --output-dir Persistence/Migrations --startup-project src/EventHub.Api
-```
+dotnet ef migrations add <Name> -c UsersDbContext -p src/Users/EventHub.Users.Infrastructure -s src/Users/EventHub.Users.Api -o Persistence/Migrations
 
-Apply pending migrations manually:
+dotnet ef migrations add <Name> -c EventsDbContext -p src/Events/EventHub.Events.Infrastructure -s src/Events/EventHub.Events.Api -o Persistence/Migrations
 
-```bash
-dotnet ef database update --project src/EventHub.Infrastructure --startup-project src/EventHub.Api
+dotnet ef migrations add <Name> -c BookingsDbContext -p src/Bookings/EventHub.Bookings.Infrastructure -s src/Bookings/EventHub.Bookings.Api -o Persistence/Migrations
 ```
 
 ## Testing
 
-| Project                     | Provider                           | Docker required |
-| --------------------------- | ---------------------------------- | --------------- |
-| `EventHub.UnitTests`        | EF Core InMemory                   | No              |
-| `EventHub.IntegrationTests` | Real PostgreSQL via Testcontainers | Yes             |
-
-### Unit tests (`EventHub.UnitTests`)
-
-Moq and a fake time provider. Each test class gets an isolated in-memory database.
-
-```bash
-dotnet test tests/EventHub.UnitTests
-```
-
-### Integration tests (`EventHub.IntegrationTests`)
-
-The `IntegrationTestFixture` starts a single `postgres:16-alpine` container per test class, applies migrations via `MigrateAsync`, and truncates all tables between tests via `ResetDataAsync()`.
-
-> **Docker is required.** The Docker daemon must be running before executing these tests.
-
-```bash
-dotnet test tests/EventHub.IntegrationTests
-```
-
-### Run all tests
+| Project                              | Provider                           | Docker required |
+| ------------------------------------ | ---------------------------------- | --------------- |
+| `EventHub.Users.UnitTests`           | Moq + FakeTimeProvider             | No              |
+| `EventHub.Users.IntegrationTests`    | Real PostgreSQL via Testcontainers | Yes             |
+| `EventHub.Events.UnitTests`          | EF Core InMemory                   | No              |
+| `EventHub.Events.IntegrationTests`   | Real PostgreSQL via Testcontainers | Yes             |
+| `EventHub.Bookings.UnitTests`        | Moq + FakeTimeProvider             | No              |
+| `EventHub.Bookings.IntegrationTests` | Real PostgreSQL via Testcontainers | Yes             |
 
 ```bash
 dotnet test
@@ -115,225 +114,81 @@ dotnet test
 
 ## API Endpoints
 
-API versioning is supported via URL segment, `X-Api-Version` header, or `api-version` query string parameter. The default version is 1.0.
+API versioning via URL segment (`/api/v1/...`), `X-Api-Version` header, or `api-version` query parameter.
 
-| Method | Endpoint                 | Description                              | Auth          | Success Status | Error Status                |
-| ------ | ------------------------ | ---------------------------------------- | ------------- | -------------- | --------------------------- |
-| POST   | /api/v1/auth/register    | Register new user                        | None          | 204 No Content | 400 / 409                   |
-| POST   | /api/v1/auth/login       | Login and get JWT token                  | None          | 200 OK         | 400 / 401                   |
-| GET    | /api/v1/events           | Get events with filtering and pagination | None          | 200 OK         | 400                         |
-| GET    | /api/v1/events/{id}      | Get event by id                          | None          | 200 OK         | 404                         |
-| POST   | /api/v1/events           | Create a new event                       | Admin         | 201 Created    | 400 / 401 / 403 / 422       |
-| POST   | /api/v1/events/{id}/book | Create a booking for an event            | Authenticated | 202 Accepted   | 400 / 401 / 404 / 409       |
-| PUT    | /api/v1/events/{id}      | Update an event                          | Admin         | 200 OK         | 400 / 401 / 403 / 404 / 422 |
-| DELETE | /api/v1/events/{id}      | Delete an event                          | Admin         | 204 No Content | 401 / 403 / 404             |
-| GET    | /api/v1/bookings/{id}    | Get booking by id                        | Authenticated | 200 OK         | 401 / 403 / 404             |
-| DELETE | /api/v1/bookings/{id}    | Cancel a booking                         | Authenticated | 204 No Content | 401 / 403 / 404             |
+### Users
 
-### Query Parameters (GET /api/v1/events)
+| Method | Endpoint             | Description             | Auth | Success | Errors       |
+| ------ | -------------------- | ----------------------- | ---- | ------- | ------------ |
+| POST   | /api/v1/auth/register | Register new user      | None | 204     | 400 / 409    |
+| POST   | /api/v1/auth/login   | Login and get JWT       | None | 200     | 400 / 401    |
 
-| Parameter | Type           | Required | Default | Description                           |
-| --------- | -------------- | -------- | ------- | ------------------------------------- |
-| title     | string         | No       | -       | Filter by event title (partial match) |
-| from      | DateTimeOffset | No       | -       | Filter events starting from this date |
-| to        | DateTimeOffset | No       | -       | Filter events ending before this date |
-| page      | int            | No       | 1       | Page number (>= 1)                    |
-| pageSize  | int            | No       | 10      | Items per page (1–50)                 |
+### Events
 
-### Paginated Response
+| Method | Endpoint          | Description              | Auth          | Success | Errors                   |
+| ------ | ----------------- | ------------------------ | ------------- | ------- | ------------------------ |
+| GET    | /api/v1/events    | Filter + paginate events | None          | 200     | 400                      |
+| GET    | /api/v1/events/{id} | Get event by id        | None          | 200     | 404                      |
+| POST   | /api/v1/events    | Create event             | Admin         | 201     | 400 / 401 / 403 / 422    |
+| PUT    | /api/v1/events/{id} | Update event           | Admin         | 200     | 400 / 401 / 403 / 404 / 422 |
+| DELETE | /api/v1/events/{id} | Delete event           | Admin         | 204     | 401 / 403 / 404          |
 
-The response is wrapped in a `PaginatedResult` object:
+Query parameters for GET /api/v1/events: `title`, `from`, `to`, `page` (default 1), `pageSize` (default 10, max 50).
 
-| Field           | Type  | Description                         |
-| --------------- | ----- | ----------------------------------- |
-| data            | array | Array of events on the current page |
-| pageNumber      | int   | Current page number                 |
-| pageSize        | int   | Number of items per page            |
-| totalPages      | int   | Total number of pages               |
-| totalRecords    | int   | Total number of matching events     |
-| itemsOnPage     | int   | Number of items on the current page |
-| hasNextPage     | bool  | Whether a next page exists          |
-| hasPreviousPage | bool  | Whether a previous page exists      |
+### Bookings
 
-## Authentication
-
-### Role Model
-
-| Role  | Permissions                                                            |
-| ----- | --------------------------------------------------------------------- |
-| Admin | Create, update, delete events; cancel any booking; everything User can |
-| User  | Book events; view and cancel own bookings only                        |
-
-### JWT Configuration
-
-Token parameters are stored in `appsettings.json` under `Authentication:Jwt`:
-
-```json
-{
-  "Authentication": {
-    "Jwt": {
-      "Issuer": "https://eventhub.com",
-      "Audience": "eventhub-api",
-      "ExpiryMinutes": 15,
-      "Secret": "<at-least-32-chars-secret>"
-    }
-  }
-}
-```
-
-> **Security:** The `Secret` must be at least 32 characters. In production, set it via environment variables or user secrets — never commit a real secret to the repository.
-
-### Obtaining a Token
-
-Register via `POST /api/v1/auth/register`, then login via `POST /api/v1/auth/login` to obtain a JWT. Click **Authorize** in Swagger UI and paste the token.
-
-## Event Model
-
-| Field          | Type           | Required | Description                                                         |
-| -------------- | -------------- | -------- | ------------------------------------------------------------------- |
-| id             | Guid           | Yes      | Auto-generated identifier                                           |
-| title          | string         | Yes      | Event title (non-empty, trimmed)                                    |
-| description    | string         | No       | Event description                                                   |
-| totalSeats     | int            | Yes      | Total number of seats (must be > 0)                                 |
-| availableSeats | int            | Yes      | Available seats (decreases on booking, increases on cancellation)   |
-| startAt        | DateTimeOffset | Yes      | Event start time (UTC, ISO 8601 with Z suffix)                      |
-| endAt          | DateTimeOffset | Yes      | Event end time (UTC, ISO 8601 with Z suffix, must be after startAt) |
-
-## Booking Model
-
-Booking endpoints return `BookingInfo`.
-
-| Field   | Type          | Description                    |
-| ------- | ------------- | ------------------------------ |
-| id      | Guid          | Booking identifier             |
-| eventId | Guid          | Identifier of the booked event |
-| userId  | Guid          | Identifier of the booking user |
-| status  | BookingStatus | Current booking status         |
-
-### Booking Status
-
-| Value     | Description                                   |
-| --------- | --------------------------------------------- |
-| Pending   | Booking created, awaits background processing |
-| Confirmed | Booking processed successfully                |
-| Rejected  | Event deleted or processing failed            |
-| Cancelled | Booking cancelled by user or admin            |
+| Method | Endpoint               | Description              | Auth          | Success | Errors                |
+| ------ | ---------------------- | ------------------------ | ------------- | ------- | --------------------- |
+| POST   | /api/v1/bookings       | Create booking| Authenticated | 202     | 400 / 401 / 409       |
+| GET    | /api/v1/bookings/{id}  | Get booking by id       | Authenticated | 200     | 401 / 403 / 404       |
+| DELETE | /api/v1/bookings/{id}  | Cancel booking           | Authenticated | 204     | 401 / 403 / 404 / 422 |
 
 ### Booking Rules
 
-- **Past events:** Booking is rejected if the event has already started (`400 Bad Request`).
-- **Active bookings limit:** A user cannot have more than 10 active bookings (pending or confirmed) across future events (`409 Conflict`).
-- **Access:** Users can view and cancel only their own bookings; admins can access any booking. Unauthorized access to another user's booking returns `403 Forbidden`.
+- **Active bookings limit:** a user cannot have more than 10 active bookings (Pending or Confirmed) — `409 Conflict`.
+- **Access:** users see and cancel only their own bookings; admins can access any booking — otherwise `403 Forbidden`.
+- **Missing event:** a booking for a non-existent event stays `Pending` indefinitely.
 
-### Date/Time Format
+### Role Model
 
-All date/time values must be provided in **UTC** using ISO 8601 format with the `Z` suffix:
+| Role  | Permissions                                                          |
+| ----- | -------------------------------------------------------------------- |
+| Admin | Create/update/delete events; access any booking                      |
+| User  | Book events; view and cancel own bookings only                       |
 
-```json
-"startAt": "2026-01-15T10:00:00Z"
-```
+Booking statuses: `Pending`, `Confirmed`, `Rejected`, `Cancelled`.
 
-Using the `Z` suffix ensures that both the client and server interpret the timestamp as UTC, avoiding timezone ambiguity.
+JWT is issued by the Users service and validated by Events and Bookings with the same Issuer/Audience/Secret (configured in `Authentication:Jwt` of each service's `appsettings.json`).
 
-## Error Responses
+## Async Booking Saga (Kafka)
 
-Errors are returned as Problem Details JSON.
+Bookings and Events communicate asynchronously via Kafka. Message contracts and topic names live in `EventHub.Shared.Contracts`. One booking = one seat.
 
-### 400 Bad Request
+Topics and their events:
 
-```json
-{
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-  "title": "Validation Error",
-  "status": 400,
-  "errors": {
-    "From": [
-      "'from' must be before or equal to 'to'."
-    ]
-  },
-  "traceId": "00-7d6f9f2e4f0b7c1c0f2e8b9d2f4a6c01-1b2c3d4e5f6a7b8c-00"
-}
-```
+| Topic                   | Event              | Publisher → Subscriber |
+| ----------------------- | ------------------ | ---------------------- |
+| `booking-created`       | `BookingCreated`    | Bookings → Events      |
+| `event-seat-reserved`   | `EventSeatReserved` | Events → Bookings      |
+| `event-seat-unavailable`| `EventSeatUnavailable` | Events → Bookings   |
+| `booking-cancelled`     | `BookingCancelled`  | Bookings → Events      |
+| `event-cancelled`       | `EventCancelled`    | Events → Bookings      |
 
-### 404 Not Found
-
-```json
-{
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.5",
-  "title": "Not Found",
-  "status": 404,
-  "detail": "'Event' with id '01972f5f-2c71-7368-92dc-9ea346eb5442' was not found.",
-  "traceId": "00-7d6f9f2e4f0b7c1c0f2e8b9d2f4a6c01-1b2c3d4e5f6a7b8c-00"
-}
-```
-
-### 409 Conflict
-
-```json
-{
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.10",
-  "title": "No Available Seats",
-  "status": 409,
-  "detail": "No available seats for this event.",
-  "traceId": "00-7d6f9f2e4f0b7c1c0f2e8b9d2f4a6c01-1b2c3d4e5f6a7b8c-00"
-}
-```
-
-### 500 Internal Server Error
-
-```json
-{
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.6.1",
-  "title": "Internal Server Error",
-  "status": 500,
-  "detail": "An unexpected error occurred.",
-  "traceId": "00-7d6f9f2e4f0b7c1c0f2e8b9d2f4a6c01-1b2c3d4e5f6a7b8c-00"
-}
-```
-
-## Background Processing
-
-Booking status transitions are handled by a background service that polls for pending bookings every 2 minutes:
+Message keys are `EventId` — all messages of one saga flow into the same partition and are processed in order.
 
 ```
-POST /events/{id}/book → Pending
-                             ↓
-                    Polling every 2 minutes
-                             ↓
-                 Parallel processing (Task.WhenAll)
-                             ↓
-             External service call (30 s delay)
-                             ↓
-               ┌──────────────┴──────────────┐
-               ↓                             ↓
-          Event exists?                 Event deleted?
-               ↓                             ↓
-          Confirmed                       Rejected
+POST /bookings      → Booking(Pending) + outbox[BookingCreated]   (single transaction)
+Events              → TryReserveSeats(): true  → EventSeatReserved  + outbox
+                    → TryReserveSeats(): false → EventSeatUnavailable + outbox
+Bookings            → Confirm(booking) / Reject(booking) + inbox (single transaction)
+DELETE /bookings/{id} → Cancel() + outbox[BookingCancelled] → Events: ReleaseSeats
+DELETE /events/{id}  → delete + outbox[EventCancelled] → Bookings: Cancel() all active bookings of the event
 ```
 
-On unexpected failure, the booking is rejected and the reserved seat is returned to the pool. `ProcessedAt` is recorded at the time of the status change.
+Reliability:
 
-## Concurrency and Synchronization
+- **Transactional outbox** in both services: business change + outbox row commit in one DB transaction; a background `OutboxDispatcher` publishes to Kafka strictly after commit and retries until published.
+- **Inbox deduplication by primary key**: every processed message id is recorded in the same transaction as its effect; a duplicate delivery fails on the inbox PK, the whole transaction rolls back, and the consumer logs-and-skips the duplicate.
+- **Compensation:** if `EventSeatReserved` arrives for an already-cancelled booking, Bookings publishes `BookingCancelled` back and Events releases the seat; a duplicate release is a logged no-op.
+- **Topic creation:** each subscriber creates the topics it consumes at startup (`KafkaTopicInitializer`, idempotent, retries while Kafka is unavailable, never fails the host). Malformed messages are logged and skipped.
 
-### `SemaphoreSlim` in BookingService
-
-`BookingService.CreateBookingAsync` uses a `SemaphoreSlim(1, 1)` to protect the atomic check-and-reserve sequence: it reads the event, decrements `AvailableSeats`, and persists both the updated event and the new booking in a single `SaveChangesAsync`. Without this synchronization, two concurrent requests could both read `AvailableSeats > 0`, both pass the check, and both create a booking — exceeding the seat limit.
-
-### Scoped DbContext in BookingProcessor
-
-`BookingProcessor` runs in the background and processes pending bookings in parallel. Each processing task creates a new `IServiceScope` via `IServiceScopeFactory.CreateAsyncScope()` and resolves its own `AppDbContext`, because `DbContext` is not thread-safe and must not be shared across parallel operations.
-
-## Overbooking Scenario
-
-When all seats for an event are taken, subsequent `POST /api/v1/events/{id}/book` requests return `409 Conflict` with the No Available Seats error (see [Error Responses](#error-responses)).
-
-Example flow with `totalSeats: 1`:
-1. First booking succeeds → `202 Accepted`, `availableSeats` becomes 0
-2. The background processor confirms the booking; `availableSeats` stays 0
-3. Any further booking attempts receive `409 Conflict`
-
-## Data Storage
-
-Event and booking data is stored in PostgreSQL and accessed through EF Core. `AppDbContext` and entity configurations live in the Infrastructure layer; Application services access them only through the `IUnitOfWork` abstraction defined in Application, keeping business logic decoupled from storage details.
-
-Filtering, pagination, and counting use `IQueryable` and execute at the database level.
