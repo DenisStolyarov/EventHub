@@ -31,6 +31,7 @@ public sealed class EventServiceTests : IDisposable
 
         services.AddDbContext<EventsDbContext>(options => options.UseInMemoryDatabase(dbName));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddSingleton(TimeProvider.System);
         services.AddScoped<IEventService, EventService>();
 
         _serviceProvider = services.BuildServiceProvider();

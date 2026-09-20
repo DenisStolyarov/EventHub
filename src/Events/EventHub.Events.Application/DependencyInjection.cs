@@ -1,4 +1,5 @@
 using EventHub.Events.Application.Abstractions.Services;
+using EventHub.Events.Application.IntegrationEvents;
 using EventHub.Events.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,6 +12,9 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
 
         services.AddScoped<IEventService, EventService>();
+
+        services.AddScoped<BookingCreatedHandler>();
+        services.AddScoped<BookingCancelledHandler>();
 
         return services;
     }

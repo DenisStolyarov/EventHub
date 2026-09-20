@@ -10,6 +10,7 @@ using EventHub.Events.Application.Filters;
 using EventHub.Events.Domain.Entities;
 using EventHub.Events.Domain.Exceptions;
 using EventHub.Events.Domain.ValueObjects;
+using EventHub.Shared.Contracts;
 
 namespace EventHub.Events.Application.Services;
 
@@ -84,6 +85,10 @@ public sealed class EventService(IUnitOfWork unitOfWork) : IEventService
             ?? throw new NotFoundException(nameof(Event), id);
 
         unitOfWork.Events.Delete(existing);
+
+        EventCancelled eventCancelled = new(Guid.CreateVersion7(), id);
+
+        unitOfWork.Outbox.Add(eventCancelled);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
