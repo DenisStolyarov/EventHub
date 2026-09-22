@@ -1,26 +1,161 @@
-# PostgreSQL для EventApi — совпадает с ConnectionStrings:DefaultConnection в appsettings.json
-# Запуск из корня репозитория: docker compose up -d
-# Остановка: docker compose down
-# Данные сохраняются в именованном томе eventapi_pgdata
+# EventHub: PostgreSQL + Kafka (KRaft) + три API-сервиса + Gateway.
+# podman compose up -d --build   |   остановка: podman compose down
+# Данные (postgres, kafka) в именованных томах; полный сброс: podman compose down -v
 
 services:
   postgres:
-    image: postgres:16-alpine
-    container_name: eventapi-postgres
+    image: docker.io/library/postgres:16-alpine
+    container_name: eventhub-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: eventapi
     ports:
       - "5432:5432"
     volumes:
-      - eventapi_pgdata:/var/lib/postgresql/data
+      - eventhub_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d eventapi"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  # INTERNAL listener (kafka:29092) — для сервисов compose-сети, EXTERNAL (localhost:9092) — для запуска с хоста.
+  kafka:
+    image: docker.io/apache/kafka:3.9.0
+    container_name: eventhub-kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+    volumes:
+      - eventhub_kafka_data:/var/lib/kafka/data
+    environment:
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+
+  users-api:
+    build:
+      context: .
+      dockerfile: src/Users/EventHub.Users.Api/Dockerfile
+    image: localhost/eventhub-users-api
+    container_name: eventhub-users-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__UsersDatabase: "Host=postgres;Port=5432;Database=eventhub_users;Username=postgres;Password=postgres"
+      Authentication__Jwt__Secret: "default-long-secret-key-for-local-development"
+      Authentication__Jwt__Issuer: "https://eventhub.dev.com"
+    ports:
+      - "5101:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  events-api:
+    build:
+      context: .
+      dockerfile: src/Events/EventHub.Events.Api/Dockerfile
+    image: localhost/eventhub-events-api
+    container_name: eventhub-events-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__EventsDatabase: "Host=postgres;Port=5432;Database=eventhub_events;Username=postgres;Password=postgres"
+      Authentication__Jwt__Secret: "default-long-secret-key-for-local-development"
+      Authentication__Jwt__Issuer: "https://eventhub.dev.com"
+      Kafka__BootstrapServers: "kafka:29092"
+      Kafka__ConsumerGroup: "eventhub-events"
+    ports:
+      - "5102:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  bookings-api:
+    build:
+      context: .
+      dockerfile: src/Bookings/EventHub.Bookings.Api/Dockerfile
+    image: localhost/eventhub-bookings-api
+    container_name: eventhub-bookings-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__BookingsDatabase: "Host=postgres;Port=5432;Database=eventhub_bookings;Username=postgres;Password=postgres"
+      Authentication__Jwt__Secret: "default-long-secret-key-for-local-development"
+      Authentication__Jwt__Issuer: "https://eventhub.dev.com"
+      Kafka__BootstrapServers: "kafka:29092"
+      Kafka__ConsumerGroup: "eventhub-bookings"
+    ports:
+      - "5103:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  gateway:
+    build:
+      context: .
+      dockerfile: src/Gateway/EventHub.Gateway/Dockerfile
+    image: localhost/eventhub-gateway
+    container_name: eventhub-gateway
+    restart: unless-stopped
+    depends_on:
+      users-api:
+        condition: service_healthy
+      events-api:
+        condition: service_healthy
+      bookings-api:
+        condition: service_healthy
+    environment:
+      ReverseProxy__Clusters__users__Destinations__users__Address: "http://users-api:8080"
+      ReverseProxy__Clusters__events__Destinations__events__Address: "http://events-api:8080"
+      ReverseProxy__Clusters__bookings__Destinations__bookings__Address: "http://bookings-api:8080"
+    ports:
+      - "5000:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
 volumes:
-  eventapi_pgdata:
+  eventhub_pgdata:
+  eventhub_kafka_data:

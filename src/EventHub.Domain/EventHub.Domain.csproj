@@ -1,8 +1,0 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
-  <ItemGroup>
-    <InternalsVisibleTo Include="EventHub.UnitTests" />
-    <InternalsVisibleTo Include="EventHub.IntegrationTests" />
-  </ItemGroup>
-
-</Project>

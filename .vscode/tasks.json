@@ -1,0 +1,41 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build-users",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "src/Users/EventHub.Users.Api/EventHub.Users.Api.csproj"],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build-events",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "src/Events/EventHub.Events.Api/EventHub.Events.Api.csproj"],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build-bookings",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "src/Bookings/EventHub.Bookings.Api/EventHub.Bookings.Api.csproj"],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build-gateway",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "src/Gateway/EventHub.Gateway/EventHub.Gateway.csproj"],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build-all",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

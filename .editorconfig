@@ -62,6 +62,7 @@ dotnet_diagnostic.CA1062.severity = suggestion
 dotnet_diagnostic.CA1716.severity = suggestion
 dotnet_diagnostic.CA2007.severity = none
 dotnet_diagnostic.CA1724.severity = none
+
 dotnet_separate_import_directive_groups = false
 dotnet_style_parentheses_in_arithmetic_binary_operators = never_if_unnecessary:none
 dotnet_style_parentheses_in_other_binary_operators = always_for_clarity:none
