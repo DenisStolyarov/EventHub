@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
 using EventHub.Shared.Authentication;
@@ -10,12 +11,13 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddPresentation(this IServiceCollection services)
     {
-        services.AddControllers();
+        services.AddControllers()
+                .AddEnumJsonConverter();
         services.AddProblemDetails();
-        services.AddEndpointsApiExplorer();
         services.AddJwtAuthentication();
         services.AddVersioning();
         services.AddSwagger();
+        services.AddHealthChecks();
 
         services.AddExceptionHandler<GlobalExceptionHandler>();
 
@@ -31,8 +33,16 @@ public static class DependencyInjection
         app.UseAuthorization();
 
         app.MapControllers();
+        app.MapHealthChecks("/health");
 
         return app;
+    }
+
+    private static IMvcBuilder AddEnumJsonConverter(this IMvcBuilder builder)
+    {
+        builder.AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+        return builder;
     }
 
     private static void AddVersioning(this IServiceCollection services) =>
