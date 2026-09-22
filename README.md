@@ -69,7 +69,18 @@ docker compose up -d --build
 
 Data lives in named volumes (`eventhub_pgdata`, `eventhub_kafka_data`) and survives restarts and `compose down`; a full wipe (databases + Kafka topics/offsets) is `podman compose down -v`.
 
+> The default JWT secret is for local development only. In production it must come from an environment variable or a secret manager.
+
 Stop: `podman compose down`.
+
+### Iterating on a single service (infra only)
+
+Rebuilding all container images on every code change is slow.
+For local development start only the infrastructure and run the services from the host:
+
+```bash
+podman compose up -d postgres kafka   # infrastructure only
+```
 
 ## Build and Run
 
