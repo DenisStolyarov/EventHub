@@ -10,7 +10,7 @@
       "cwd": "${workspaceFolder}/src/Gateway/EventHub.Gateway",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ASPNETCORE_URLS": "http://localhost:5000"
+        "ASPNETCORE_URLS": "http://localhost:5100"
       },
       "console": "integratedTerminal"
     },

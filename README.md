@@ -65,7 +65,7 @@ docker compose up -d --build
 | eventhub-postgres | 5432 | one instance, three databases (`eventhub_*`) — created automatically by each service's `MigrateAsync()` |
 | eventhub-kafka | 9092 | KRaft (no Zookeeper); internal listener `kafka:29092` for compose services |
 | eventhub-users-api / events-api / bookings-api | 5101–5103 | API services |
-| eventhub-gateway | **5000** | single entry point (YARP reverse proxy + aggregated Swagger UI at `/swagger`) |
+| eventhub-gateway | **5100** | single entry point (YARP reverse proxy + aggregated Swagger UI at `/swagger`) |
 
 Data lives in named volumes (`eventhub_pgdata`, `eventhub_kafka_data`) and survives restarts and `compose down`; a full wipe (databases + Kafka topics/offsets) is `podman compose down -v`.
 
@@ -89,10 +89,10 @@ dotnet build
 dotnet run --project src/Users/EventHub.Users.Api       # http://localhost:5101
 dotnet run --project src/Events/EventHub.Events.Api     # http://localhost:5102
 dotnet run --project src/Bookings/EventHub.Bookings.Api # http://localhost:5103
-dotnet run --project src/Gateway/EventHub.Gateway       # http://localhost:5000
+dotnet run --project src/Gateway/EventHub.Gateway       # http://localhost:5100
 ```
 
-Swagger UI: `http://localhost:<port>/swagger`; via Gateway — a single aggregated UI at `http://localhost:5000/swagger`.
+Swagger UI: `http://localhost:<port>/swagger`; via Gateway — a single aggregated UI at `http://localhost:5100/swagger`.
 
 Migrations are applied automatically at startup (`MigrateAsync`).
 
