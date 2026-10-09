@@ -41,6 +41,13 @@ public sealed class EventRepository(EventsDbContext context) : IEventRepository
         return new PagedResult<Event>(events, totalCount);
     }
 
+    public async Task<IReadOnlyCollection<Event>> GetTopBySalesPercentageAsync(int count, CancellationToken cancellationToken = default) =>
+        await context.Events
+            .OrderByDescending(e => (double)(e.TotalSeats - e.AvailableSeats) / e.TotalSeats)
+            .ThenBy(e => e.Id)
+            .Take(count)
+            .ToListAsync(cancellationToken);
+
     public void Add(Event @event) => context.Events.Add(@event);
 
     public void Delete(Event @event) => context.Events.Remove(@event);

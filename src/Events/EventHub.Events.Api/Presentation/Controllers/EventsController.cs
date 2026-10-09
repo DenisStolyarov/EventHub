@@ -29,6 +29,16 @@ public class EventsController(IEventService eventService) : ControllerBase
         return Ok(page);
     }
 
+    [HttpGet("top")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(IReadOnlyCollection<EventDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyCollection<EventDto>>> GetTopAsync(CancellationToken cancellationToken)
+    {
+        IReadOnlyCollection<EventDto> events = await eventService.GetTopAsync(cancellationToken);
+
+        return Ok(events);
+    }
+
     [HttpGet("{id:guid}")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
