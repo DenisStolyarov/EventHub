@@ -1,9 +1,11 @@
+using EventHub.Events.Application.Abstractions.Caching;
 using EventHub.Events.Application.Abstractions.Persistence;
 using EventHub.Events.Application.Abstractions.Services;
 using EventHub.Events.Application.Constants;
 using EventHub.Events.Application.Dtos;
 using EventHub.Events.Application.Dtos.Events;
 using EventHub.Events.Application.Exceptions;
+using EventHub.Events.Application.Options;
 using EventHub.Events.Application.Services;
 using EventHub.Events.Domain.Entities;
 using EventHub.Events.Domain.Exceptions;
@@ -12,6 +14,9 @@ using EventHub.Events.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Moq;
+
 using static EventHub.Events.UnitTests.TestData.TestDateTime;
 
 namespace EventHub.Events.UnitTests.Services;
@@ -32,6 +37,8 @@ public sealed class EventServiceTests : IDisposable
         services.AddDbContext<EventsDbContext>(options => options.UseInMemoryDatabase(dbName));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(Mock.Of<ICacheService>());
+        services.AddSingleton(Options.Create(new CacheOptions { EventTtlSeconds = 600, TopTtlSeconds = 60 }));
         services.AddScoped<IEventService, EventService>();
 
         _serviceProvider = services.BuildServiceProvider();
