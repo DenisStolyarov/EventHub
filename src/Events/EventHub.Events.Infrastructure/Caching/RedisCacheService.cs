@@ -25,7 +25,7 @@ public sealed class RedisCacheService(IConnectionMultiplexer multiplexer, ILogge
 
             return default;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Redis get failed for key {CacheKey}", key);
 
@@ -41,7 +41,7 @@ public sealed class RedisCacheService(IConnectionMultiplexer multiplexer, ILogge
 
             await Database.StringSetAsync(key, payload, ttl);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Redis set failed for key {CacheKey}", key);
         }
@@ -53,7 +53,7 @@ public sealed class RedisCacheService(IConnectionMultiplexer multiplexer, ILogge
         {
             await Database.KeyDeleteAsync(key);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Redis remove failed for key {CacheKey}", key);
         }
