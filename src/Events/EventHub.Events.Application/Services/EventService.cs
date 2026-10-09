@@ -1,3 +1,4 @@
+using EventHub.Events.Application.Abstractions.Caching;
 using EventHub.Events.Application.Abstractions.Persistence;
 using EventHub.Events.Application.Abstractions.Services;
 using EventHub.Events.Application.Common;
@@ -7,15 +8,21 @@ using EventHub.Events.Application.Dtos.Events;
 using EventHub.Events.Application.Errors;
 using EventHub.Events.Application.Exceptions;
 using EventHub.Events.Application.Filters;
+using EventHub.Events.Application.Options;
 using EventHub.Events.Domain.Entities;
 using EventHub.Events.Domain.Exceptions;
 using EventHub.Events.Domain.ValueObjects;
 using EventHub.Shared.Contracts;
+using Microsoft.Extensions.Options;
 
 namespace EventHub.Events.Application.Services;
 
-public sealed class EventService(IUnitOfWork unitOfWork) : IEventService
+public sealed class EventService(IUnitOfWork unitOfWork, ICacheService cache, IOptions<CacheOptions> options) : IEventService
 {
+    private const int TopEventsCount = 10;
+
+    private CacheOptions Options { get; } = options.Value;
+
     public async Task<PaginatedResult<EventDto>> GetAllAsync(GetEventsDto dto, CancellationToken cancellationToken = default)
     {
         DateTime? from = dto.From?.UtcDateTime;
@@ -45,12 +52,43 @@ public sealed class EventService(IUnitOfWork unitOfWork) : IEventService
         };
     }
 
+    public async Task<IReadOnlyCollection<EventDto>> GetTopAsync(CancellationToken cancellationToken = default)
+    {
+        List<EventDto>? cachedEvents = await cache.GetAsync<List<EventDto>>(CacheKeys.Top10, cancellationToken);
+
+        if (cachedEvents is not null)
+        {
+            return cachedEvents;
+        }
+
+        IReadOnlyCollection<Event> events = await unitOfWork.Events.GetTopBySalesPercentageAsync(TopEventsCount, cancellationToken);
+
+        List<EventDto> data = [.. events.ToDto()];
+
+        await cache.SetAsync(CacheKeys.Top10, data, TimeSpan.FromSeconds(Options.TopTtlSeconds), cancellationToken);
+
+        return data;
+    }
+
     public async Task<EventDto> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        string cacheKey = CacheKeys.ForEvent(id);
+
+        EventDto? cachedEvent = await cache.GetAsync<EventDto>(cacheKey, cancellationToken);
+
+        if (cachedEvent is not null)
+        {
+            return cachedEvent;
+        }
+
         Event @event = await unitOfWork.Events.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException(nameof(Event), id);
 
-        return @event.ToDto();
+        EventDto dto = @event.ToDto();
+
+        await cache.SetAsync(cacheKey, dto, TimeSpan.FromSeconds(Options.EventTtlSeconds), cancellationToken);
+
+        return dto;
     }
 
     public async Task<EventDto> CreateAsync(CreateEventDto dto, CancellationToken cancellationToken = default)
@@ -76,6 +114,8 @@ public sealed class EventService(IUnitOfWork unitOfWork) : IEventService
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
+        await cache.RemoveAsync(CacheKeys.ForEvent(id), cancellationToken);
+
         return existing.ToDto();
     }
 
@@ -91,5 +131,7 @@ public sealed class EventService(IUnitOfWork unitOfWork) : IEventService
         unitOfWork.Outbox.Add(eventCancelled);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await cache.RemoveAsync(CacheKeys.ForEvent(id), cancellationToken);
     }
 }

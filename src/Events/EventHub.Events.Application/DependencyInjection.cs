@@ -1,5 +1,6 @@
 using EventHub.Events.Application.Abstractions.Services;
 using EventHub.Events.Application.IntegrationEvents;
+using EventHub.Events.Application.Options;
 using EventHub.Events.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,6 +10,11 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        services
+            .AddOptionsWithValidateOnStart<CacheOptions>()
+            .ValidateDataAnnotations()
+            .BindConfiguration(CacheOptions.SectionName);
+
         services.AddSingleton(TimeProvider.System);
 
         services.AddScoped<IEventService, EventService>();

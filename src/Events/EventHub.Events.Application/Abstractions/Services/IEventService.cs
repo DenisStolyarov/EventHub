@@ -7,6 +7,8 @@ public interface IEventService
 {
     Task<PaginatedResult<EventDto>> GetAllAsync(GetEventsDto dto, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<EventDto>> GetTopAsync(CancellationToken cancellationToken = default);
+
     Task<EventDto> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<EventDto> CreateAsync(CreateEventDto dto, CancellationToken cancellationToken = default);
