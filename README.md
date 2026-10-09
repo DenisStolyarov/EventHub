@@ -1,6 +1,6 @@
 # EventHub
 
-Microservices solution for managing events, built on ASP.NET Core (.NET 10) with EF Core and PostgreSQL.
+Microservices solution for managing events, built on ASP.NET Core (.NET 10) with EF Core, PostgreSQL and Redis.
 
 Three independent services + three shared projects:
 
@@ -49,14 +49,13 @@ Services are fully decoupled — bookings reference users and events by `Guid` i
 - .NET 10 SDK
 - PostgreSQL 16
 - Apache Kafka 3.9
+- Redis 7.2
 
 ## Database and Kafka
 
 Start the full stack — PostgreSQL, Kafka, three API services and the Gateway:
 
 ```bash
-podman compose up -d --build
-# or:
 docker compose up -d --build
 ```
 
@@ -64,14 +63,15 @@ docker compose up -d --build
 | --------- | ---- | ------- |
 | eventhub-postgres | 5432 | one instance, three databases (`eventhub_*`) — created automatically by each service's `MigrateAsync()` |
 | eventhub-kafka | 9092 | KRaft (no Zookeeper); internal listener `kafka:29092` for compose services |
+| eventhub-redis | 6379 | cache for services (cache-aside) |
 | eventhub-users-api / events-api / bookings-api | 5101–5103 | API services |
 | eventhub-gateway | **5100** | single entry point (YARP reverse proxy + aggregated Swagger UI at `/swagger`) |
 
-Data lives in named volumes (`eventhub_pgdata`, `eventhub_kafka_data`) and survives restarts and `compose down`; a full wipe (databases + Kafka topics/offsets) is `podman compose down -v`.
+Data lives in named volumes (`eventhub_pgdata`, `eventhub_kafka_data`, `eventhub_redis_data`) and survives restarts and `compose down`; a full wipe (databases + Kafka topics/offsets + cache) is `docker compose down -v`.
 
 > The default JWT secret is for local development only. In production it must come from an environment variable or a secret manager.
 
-Stop: `podman compose down`.
+Stop: `docker compose down`.
 
 ### Iterating on a single service (infra only)
 
@@ -79,7 +79,7 @@ Rebuilding all container images on every code change is slow.
 For local development start only the infrastructure and run the services from the host:
 
 ```bash
-podman compose up -d postgres kafka   # infrastructure only
+docker compose up -d postgres kafka redis   # infrastructure only
 ```
 
 ## Build and Run
@@ -114,7 +114,7 @@ dotnet ef migrations add <Name> -c BookingsDbContext -p src/Bookings/EventHub.Bo
 | ------------------------------------ | ---------------------------------- | --------------- |
 | `EventHub.Users.UnitTests`           | Moq + FakeTimeProvider             | No              |
 | `EventHub.Users.IntegrationTests`    | Real PostgreSQL via Testcontainers | Yes             |
-| `EventHub.Events.UnitTests`          | EF Core InMemory                   | No              |
+| `EventHub.Events.UnitTests`          | EF Core InMemory + Moq             | No              |
 | `EventHub.Events.IntegrationTests`   | Real PostgreSQL via Testcontainers | Yes             |
 | `EventHub.Bookings.UnitTests`        | Moq + FakeTimeProvider             | No              |
 | `EventHub.Bookings.IntegrationTests` | Real PostgreSQL via Testcontainers | Yes             |
@@ -139,6 +139,7 @@ API versioning via URL segment (`/api/v1/...`), `X-Api-Version` header, or `api-
 | Method | Endpoint          | Description              | Auth          | Success | Errors                   |
 | ------ | ----------------- | ------------------------ | ------------- | ------- | ------------------------ |
 | GET    | /api/v1/events    | Filter + paginate events | None          | 200     | 400                      |
+| GET    | /api/v1/events/top | Top 10 events by sold-seat percentage | None | 200     |                          |
 | GET    | /api/v1/events/{id} | Get event by id        | None          | 200     | 404                      |
 | POST   | /api/v1/events    | Create event             | Admin         | 201     | 400 / 401 / 403 / 422    |
 | PUT    | /api/v1/events/{id} | Update event           | Admin         | 200     | 400 / 401 / 403 / 404 / 422 |
@@ -202,4 +203,21 @@ Reliability:
 - **Inbox deduplication by primary key**: every processed message id is recorded in the same transaction as its effect; a duplicate delivery fails on the inbox PK, the whole transaction rolls back, and the consumer logs-and-skips the duplicate.
 - **Compensation:** if `EventSeatReserved` arrives for an already-cancelled booking, Bookings publishes `BookingCancelled` back and Events releases the seat; a duplicate release is a logged no-op.
 - **Topic creation:** each subscriber creates the topics it consumes at startup (`KafkaTopicInitializer`, idempotent, retries while Kafka is unavailable, never fails the host). Malformed messages are logged and skipped.
+
+## Caching (Redis)
+
+The Events service caches reads in Redis (cache-aside): `GET /events/{id}` → key `event:{id}`, `GET /events/top` → key `events:top10` (top 10 by sold-seat percentage).
+
+- Single events are invalidated on every write (including seat changes via Kafka); the next read warms the cache again. Order: database first, cache second.
+- The top-10 rating is refreshed by TTL only — slight staleness is acceptable for a popularity rating.
+- If Redis is down, requests fall through to PostgreSQL; the service starts and works without Redis.
+
+Configuration:
+
+```json
+"Redis": { "Host": "", "Port": 0, "Password": "" },
+"Cache": { "EventTtlSeconds": 600, "TopTtlSeconds": 60 }
+```
+
+TTL choice: 600s for a single event — invalidation on write bounds staleness, so TTL only guards against missed invalidations; 60s for the rating — the list changes infrequently and slightly outdated percentages are fine.
 

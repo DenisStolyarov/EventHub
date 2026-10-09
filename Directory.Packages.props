@@ -24,6 +24,8 @@
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <!-- Messaging -->
     <PackageVersion Include="Confluent.Kafka" Version="2.15.1" />
+    <!-- Caching -->
+    <PackageVersion Include="StackExchange.Redis" Version="2.8.31" />
     <!-- Swagger -->
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
     <!-- Testing -->

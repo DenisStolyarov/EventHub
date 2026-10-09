@@ -49,6 +49,20 @@ services:
       timeout: 10s
       retries: 15
 
+  redis:
+    image: docker.io/library/redis:7.2-alpine
+    container_name: eventhub-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - eventhub_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   users-api:
     build:
       context: .
@@ -85,9 +99,12 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__EventsDatabase: "Host=postgres;Port=5432;Database=eventhub_events;Username=postgres;Password=postgres"
+      Redis__Host: "redis"
       Authentication__Jwt__Secret: "default-long-secret-key-for-local-development"
       Authentication__Jwt__Issuer: "https://eventhub.dev.com"
       Kafka__BootstrapServers: "kafka:29092"
@@ -159,3 +176,4 @@ services:
 volumes:
   eventhub_pgdata:
   eventhub_kafka_data:
+  eventhub_redis_data:

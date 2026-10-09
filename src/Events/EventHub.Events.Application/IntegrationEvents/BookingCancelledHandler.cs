@@ -1,4 +1,6 @@
+using EventHub.Events.Application.Abstractions.Caching;
 using EventHub.Events.Application.Abstractions.Persistence;
+using EventHub.Events.Application.Constants;
 using EventHub.Events.Domain.Entities;
 using EventHub.Events.Domain.Exceptions;
 using EventHub.Shared.Contracts;
@@ -8,6 +10,7 @@ namespace EventHub.Events.Application.IntegrationEvents;
 
 public sealed class BookingCancelledHandler(
     IUnitOfWork unitOfWork,
+    ICacheService cache,
     ILogger<BookingCancelledHandler> logger) : IIntegrationMessageHandler<BookingCancelled>
 {
     public async Task HandleAsync(BookingCancelled message, CancellationToken cancellationToken = default)
@@ -43,6 +46,8 @@ public sealed class BookingCancelledHandler(
         unitOfWork.Inbox.Add(message.Id);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await cache.RemoveAsync(CacheKeys.ForEvent(message.EventId), cancellationToken);
 
         logger.LogInformation("Seats for event {EventId} are released", message.EventId);
     }

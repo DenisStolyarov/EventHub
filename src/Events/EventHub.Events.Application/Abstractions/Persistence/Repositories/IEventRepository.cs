@@ -10,6 +10,8 @@ public interface IEventRepository
 
     Task<PagedResult<Event>> GetFilteredAsync(EventFilter filter, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<Event>> GetTopBySalesPercentageAsync(int count, CancellationToken cancellationToken = default);
+
     void Add(Event @event);
 
     void Delete(Event @event);
