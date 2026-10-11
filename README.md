@@ -221,3 +221,31 @@ Configuration:
 
 TTL choice: 600s for a single event — invalidation on write bounds staleness, so TTL only guards against missed invalidations; 60s for the rating — the list changes infrequently and slightly outdated percentages are fine.
 
+## Observability
+
+All three business services (Users, Events, Bookings) and the YARP Gateway are instrumented with **OpenTelemetry**: traces for HTTP requests and EF Core database calls, and metrics for ASP.NET Core and the .NET runtime.
+
+| Signal | Tool | Where |
+| ------ | ---- | ----- |
+| Metrics | OpenTelemetry → Prometheus exporter | each service exposes `/metrics`; scraped by Prometheus |
+| Traces | OpenTelemetry → OTLP | Jaeger (`OTEL_EXPORTER_OTLP_ENDPOINT`, OTLP gRPC) |
+| Logs | Serilog (JSON) | container stdout / console |
+
+The monitoring stack starts together with the application services and launches:
+
+| Container | Port | Purpose |
+| --------- | ---- | ------- |
+| eventhub-prometheus | **9090** | metrics storage; scrape config in `prometheus.yml`|
+| eventhub-jaeger | **16686** (UI), 4317 (OTLP gRPC) | trace storage|
+| eventhub-grafana | **3000** | dashboards; login `admin` / `admin` |
+
+Grafana is provisioned from config files (no manual setup): the Prometheus datasource and the **EventHub Overview** dashboard are loaded automatically.
+
+The dashboard shows, per service:
+
+- **Throughput (RPS)** — `rate(http_server_request_duration_seconds_count)`
+- **Error rate (5xx), %**
+- **Latency** — p50 / p95 / p99 from `http_server_request_duration_seconds_bucket`
+- **Active requests** — `http_server_active_requests`
+- **Saturation** — ThreadPool queue length and thread count, Kestrel active and queued connections, process CPU (cores) and working set
+- **.NET runtime** — GC heap size (last collection) and GC collections rate
