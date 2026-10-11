@@ -4,9 +4,12 @@ using EventHub.Users.Infrastructure;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+builder.SetupLogging();
+
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
 builder.Services.AddPresentation();
+builder.Services.AddObservability("users-service");
 
 if (builder.Environment.IsDevelopment())
 {
