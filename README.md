@@ -239,6 +239,8 @@ The monitoring stack starts together with the application services and launches:
 | eventhub-jaeger | **16686** (UI), 4317 (OTLP gRPC) | trace storage|
 | eventhub-grafana | **3000** | dashboards; login `admin` / `admin` |
 
+The scrape config is applied via an explicit bind mount in `docker-compose.yml`: `./prometheus.yml` is mounted read-only to `/etc/prometheus/prometheus.yml` inside the Prometheus container.
+
 Grafana is provisioned from config files (no manual setup): the Prometheus datasource and the **EventHub Overview** dashboard are loaded automatically.
 
 The dashboard shows, per service:
