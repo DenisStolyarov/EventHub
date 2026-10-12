@@ -3,6 +3,11 @@ using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
 using EventHub.Users.Api.Presentation.Configurations;
 using EventHub.Users.Api.Presentation.ExceptionHandlers;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Serilog;
+using Serilog.Formatting.Compact;
 
 namespace EventHub.Users.Api.Presentation;
 
@@ -30,9 +35,41 @@ public static class DependencyInjection
 
         app.MapControllers();
         app.MapHealthChecks("/health");
+        app.MapPrometheusScrapingEndpoint();
 
         return app;
     }
+
+    public static IServiceCollection AddObservability(this IServiceCollection services, string serviceName)
+    {
+        services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource.AddService(serviceName: serviceName))
+            .WithTracing(tracing => tracing
+                .AddAspNetCoreInstrumentation(options => options.Filter = IsTraceableHttpRequest)
+                .AddHttpClientInstrumentation()
+                .AddEntityFrameworkCoreInstrumentation(options => options.Filter = IsTraceableDbCommand)
+                .AddOtlpExporter())
+            .WithMetrics(metrics => metrics
+                .AddAspNetCoreInstrumentation()
+                .AddRuntimeInstrumentation()
+                .AddPrometheusExporter());
+
+        return services;
+    }
+
+    public static void SetupLogging(this WebApplicationBuilder builder) =>
+        builder.Host.UseSerilog((context, configuration) =>
+            configuration.ReadFrom.Configuration(context.Configuration)
+                .WriteTo.Console(new CompactJsonFormatter()));
+
+    private static bool IsTraceableHttpRequest(HttpContext context) =>
+        !context.Request.Path.StartsWithSegments("/metrics")
+        && !context.Request.Path.StartsWithSegments("/health")
+        && !context.Request.Path.StartsWithSegments("/swagger");
+
+    private static bool IsTraceableDbCommand(string? providerName, System.Data.IDbCommand command) =>
+        !(command.CommandText.Contains("outbox_messages", StringComparison.OrdinalIgnoreCase)
+        && command.CommandText.Contains("processed_at IS NULL", StringComparison.OrdinalIgnoreCase));
 
     private static IMvcBuilder AddEnumJsonConverter(this IMvcBuilder builder)
     {

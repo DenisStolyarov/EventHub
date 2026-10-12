@@ -1,15 +1,36 @@
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Serilog;
+using Serilog.Formatting.Compact;
+
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, configuration) =>
+    configuration.ReadFrom.Configuration(context.Configuration)
+        .WriteTo.Console(new CompactJsonFormatter()));
 
 builder.Services
     .AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
 builder.Services.AddHealthChecks();
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(serviceName: "gateway"))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation(options => options.Filter = IsTraceableHttpRequest)
+        .AddHttpClientInstrumentation()
+        .AddOtlpExporter())
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddPrometheusExporter());
 
 WebApplication app = builder.Build();
 
 app.MapReverseProxy();
 app.MapHealthChecks("/health");
+app.MapPrometheusScrapingEndpoint();
 
 app.UseSwaggerUI(options =>
 {
@@ -20,3 +41,9 @@ app.UseSwaggerUI(options =>
 });
 
 await app.RunAsync();
+
+static bool IsTraceableHttpRequest(HttpContext context) =>
+    !context.Request.Path.StartsWithSegments("/metrics")
+    && !context.Request.Path.StartsWithSegments("/health")
+    && !context.Request.Path.StartsWithSegments("/swagger")
+    && !context.Request.Path.StartsWithSegments("/docs");

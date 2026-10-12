@@ -78,6 +78,7 @@ services:
       ConnectionStrings__UsersDatabase: "Host=postgres;Port=5432;Database=eventhub_users;Username=postgres;Password=postgres"
       Authentication__Jwt__Secret: "default-long-secret-key-for-local-development"
       Authentication__Jwt__Issuer: "https://eventhub.dev.com"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
     ports:
       - "5101:8080"
     healthcheck:
@@ -109,6 +110,7 @@ services:
       Authentication__Jwt__Issuer: "https://eventhub.dev.com"
       Kafka__BootstrapServers: "kafka:29092"
       Kafka__ConsumerGroup: "eventhub-events"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
     ports:
       - "5102:8080"
     healthcheck:
@@ -137,6 +139,7 @@ services:
       Authentication__Jwt__Issuer: "https://eventhub.dev.com"
       Kafka__BootstrapServers: "kafka:29092"
       Kafka__ConsumerGroup: "eventhub-bookings"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
     ports:
       - "5103:8080"
     healthcheck:
@@ -164,6 +167,7 @@ services:
       ReverseProxy__Clusters__users__Destinations__users__Address: "http://users-api:8080"
       ReverseProxy__Clusters__events__Destinations__events__Address: "http://events-api:8080"
       ReverseProxy__Clusters__bookings__Destinations__bookings__Address: "http://bookings-api:8080"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
     ports:
       - "5100:8080"
     healthcheck:
@@ -173,7 +177,48 @@ services:
       retries: 12
       start_period: 20s
 
+  prometheus:
+    image: docker.io/prom/prometheus:v2.51.0
+    container_name: eventhub-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  jaeger:
+    image: docker.io/jaegertracing/all-in-one:1.56
+    container_name: eventhub-jaeger
+    restart: unless-stopped
+    user: root
+    ports:
+      - "16686:16686" # UI
+      - "4317:4317"   # OTLP gRPC
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+      SPAN_STORAGE_TYPE: badger
+      BADGER_EPHEMERAL: "false"
+      BADGER_DIRECTORY_VALUE: /badger/data
+      BADGER_DIRECTORY_KEY: /badger/key
+    volumes:
+      - eventhub_jaeger:/badger
+
+  grafana:
+    image: docker.io/grafana/grafana:10.4.2
+    container_name: eventhub-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+
 volumes:
   eventhub_pgdata:
   eventhub_kafka_data:
   eventhub_redis_data:
+  eventhub_jaeger:
+  grafana-data:
